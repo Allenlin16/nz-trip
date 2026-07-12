@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>紐西蘭南島 8 天｜星空・冰川・跳傘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{
+  --night:#16243A;      /* 高山夜空 */
+  --night-2:#1F3352;
+  --glacier:#3EA8BE;    /* Pukaki 冰川湖藍 */
+  --glacier-deep:#2A7E92;
+  --ice:#EEF5F7;        /* 冰原底色 */
+  --snow:#FFFFFF;
+  --tussock:#C79A3F;    /* Lindis Pass 金色草原 */
+  --ink:#22303E;
+  --ink-soft:#5B6B7A;
+  --line:#D7E4E8;
+  --alert:#B4552D;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--ice);color:var(--ink);line-height:1.75;font-size:16px}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:'Noto Serif TC',serif}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* ── Hero ── */
+.hero{background:linear-gradient(175deg,var(--night) 0%,var(--night-2) 62%,var(--glacier-deep) 130%);color:#EAF3F6;padding:64px 0 56px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background-image:
+  radial-gradient(1.4px 1.4px at 12% 22%,rgba(255,255,255,.9) 50%,transparent 51%),
+  radial-gradient(1px 1px at 30% 12%,rgba(255,255,255,.7) 50%,transparent 51%),
+  radial-gradient(1.6px 1.6px at 48% 30%,rgba(255,255,255,.85) 50%,transparent 51%),
+  radial-gradient(1px 1px at 62% 10%,rgba(255,255,255,.6) 50%,transparent 51%),
+  radial-gradient(1.3px 1.3px at 76% 24%,rgba(255,255,255,.8) 50%,transparent 51%),
+  radial-gradient(1px 1px at 88% 16%,rgba(255,255,255,.65) 50%,transparent 51%),
+  radial-gradient(1.5px 1.5px at 94% 38%,rgba(255,255,255,.75) 50%,transparent 51%),
+  radial-gradient(1px 1px at 8% 44%,rgba(255,255,255,.55) 50%,transparent 51%);
+  pointer-events:none}
+.hero .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.24em;color:#8FC8D6;margin-bottom:14px}
+.hero h1{font-size:clamp(30px,6.4vw,46px);font-weight:900;letter-spacing:.04em;line-height:1.3}
+.hero h1 .thin{display:block;font-size:.5em;font-weight:600;color:#B9D8E1;letter-spacing:.18em;margin-top:10px}
+.hero .dates{margin-top:22px;font-family:'IBM Plex Mono',monospace;font-size:15px;color:#DFF0F4}
+.badges{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+.badge{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 16px;font-size:14px;font-weight:500}
+.hero .note{margin-top:26px;font-size:13px;color:#9FBECB}
+
+/* ── 區塊標題 ── */
+section{padding:52px 0 8px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:24px}
+.sec-head h2{font-size:24px;font-weight:700;letter-spacing:.06em}
+.sec-head .sub{font-size:13px;color:var(--ink-soft)}
+.rule{height:3px;width:44px;background:var(--glacier);border-radius:2px;margin-bottom:14px}
+
+/* ── 路線圖 ── */
+.livemap-card{background:var(--snow);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(22,36,58,.05);margin-bottom:18px}
+#livemap{height:480px;width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:11px 16px;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);background:#FAFDFD}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.lg-line{width:26px;height:0;border-top:3px solid var(--glacier);display:inline-block;border-radius:2px}
+.lg-dash{width:26px;height:0;border-top:3px dashed var(--glacier);display:inline-block}
+.leaflet-popup-content{font-family:'Noto Sans TC',sans-serif;font-size:13.5px;line-height:1.6;margin:10px 14px}
+.leaflet-popup-content b{font-size:14px}
+.map-card{background:var(--snow);border:1px solid var(--line);border-radius:16px;padding:22px 16px 12px;box-shadow:0 2px 10px rgba(22,36,58,.05)}
+.map-card svg{width:100%;height:auto;display:block}
+.map-caption{font-size:12.5px;color:var(--ink-soft);text-align:center;padding:8px 6px 8px}
+
+/* ── 總覽表 ── */
+table{width:100%;border-collapse:collapse;background:var(--snow);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(22,36,58,.05);font-size:14.5px}
+th{background:var(--night);color:#DFF0F4;font-weight:500;padding:11px 12px;text-align:left;letter-spacing:.05em;font-size:13.5px}
+td{padding:11px 12px;border-top:1px solid var(--line);vertical-align:top}
+tr td:first-child{white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--glacier-deep);font-weight:600}
+.t-note{font-size:12.5px;color:var(--ink-soft);margin-top:10px}
+
+/* ── 路線帶（每日行程）── */
+.route{position:relative;margin-top:8px;padding-left:34px}
+.route::before{content:"";position:absolute;left:11px;top:8px;bottom:8px;width:4px;border-radius:2px;
+  background:repeating-linear-gradient(to bottom,var(--glacier) 0 14px,#BFDDE4 14px 22px)}
+.day{position:relative;margin-bottom:20px}
+.day::before{content:"";position:absolute;left:-31px;top:22px;width:16px;height:16px;border-radius:50%;
+  background:var(--snow);border:4px solid var(--glacier)}
+.day.hl::before{border-color:var(--tussock)}
+.day-card{background:var(--snow);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(22,36,58,.05)}
+.day-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.day-date{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--glacier-deep);background:#E4F1F4;padding:3px 10px;border-radius:6px}
+.day.hl .day-date{color:#8A6516;background:#F5EBD3}
+.day-title{font-family:'Noto Serif TC',serif;font-size:18.5px;font-weight:700}
+.drive{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+.drive .mono{color:var(--glacier-deep)}
+.day ul{list-style:none;margin-top:12px}
+.day li{position:relative;padding-left:74px;margin-bottom:8px;font-size:14.5px}
+.day li .tt{position:absolute;left:0;top:1px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.day li.star{font-weight:700}
+.day li.star::after{content:"必玩";font-size:11px;font-weight:700;color:#fff;background:var(--tussock);border-radius:5px;padding:1.5px 7px;margin-left:8px;vertical-align:1.5px}
+.stay{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);font-size:13.5px;color:var(--ink-soft)}
+.stay b{color:var(--ink)}
+.tip{margin-top:10px;background:#F4F9FA;border-left:3px solid var(--glacier);border-radius:0 8px 8px 0;padding:9px 12px;font-size:13px;color:var(--ink-soft)}
+.tip.warn{background:#FBF2EC;border-left-color:var(--alert);color:#7A4526}
+
+/* ── 預算 ── */
+.money{font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.total-row td{background:#F0F7F9;font-weight:700}
+.fx{font-size:12.5px;color:var(--ink-soft);margin-top:10px}
+
+/* ── 注意事項 ── */
+.notes{display:grid;grid-template-columns:1fr;gap:12px}
+.note-card{background:var(--snow);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 2px 10px rgba(22,36,58,.05)}
+.note-card h3{font-size:15.5px;margin-bottom:6px;color:var(--night)}
+.note-card p,.note-card li{font-size:14px;color:#3C4B5A}
+.note-card ul{padding-left:20px}
+.note-card.alert{border:1.5px solid var(--alert);background:#FDF6F1}
+.note-card.alert h3{color:var(--alert)}
+
+/* ── Footer ── */
+footer{margin-top:56px;background:var(--night);color:#9FBECB;text-align:center;padding:26px 20px;font-size:13px}
+footer .mono{color:#DFF0F4}
+
+@media(min-width:640px){.notes{grid-template-columns:1fr 1fr}}
+@media print{.hero{padding:34px 0} section{padding:26px 0 4px} .day-card,.note-card,.map-card,table{box-shadow:none}}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">SOUTH ISLAND · NEW ZEALAND</div>
+    <h1>紐西蘭南島 8 天 7 夜
+      <span class="thin">星空 ─ 冰川 ─ 跳傘 縱貫之旅</span>
+    </h1>
+    <div class="dates">2026.09.20（六）CHC 降落 14:30 → 09.27（六）ZQN 起飛 20:00</div>
+    <div class="badges">
+      <span class="badge">🌌 Tekapo 暗空觀星</span>
+      <span class="badge">🧊 塔斯曼冰川健行</span>
+      <span class="badge">🪂 Wanaka 15,000ft 跳傘</span>
+      <span class="badge">🚗 全程自駕 約 630 km</span>
+    </div>
+    <div class="note">基督城進・皇后鎮出，一路南下不走回頭路｜住宿 7 晚已全數確認 ✅</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ═══ 路線示意圖 ═══ -->
+<section>
+  <div class="rule"></div>
+  <div class="sec-head"><h2>路線總覽</h2><span class="sub">互動地圖：可縮放・點標記看說明</span></div>
+  <div class="livemap-card">
+    <div id="livemap" role="application" aria-label="南島行程互動地圖"></div>
+    <div class="legend">
+      <span><i class="lg-dot" style="background:#16243A"></i>住宿點</span>
+      <span><i class="lg-dot" style="background:#C79A3F"></i>三大體驗</span>
+      <span><i class="lg-dot" style="background:#3EA8BE"></i>景點</span>
+      <span><i class="lg-line"></i>主路線</span>
+      <span><i class="lg-dash"></i>一日來回支線</span>
+    </div>
+  </div>
+  <p class="map-caption" style="margin-bottom:18px">＊路線為點對點直線示意，實際行駛依公路；離線時請看下方示意圖。</p>
+  <div class="map-card">
+    <svg viewBox="0 0 420 540" role="img" aria-label="南島路線示意圖：基督城經蒂卡波、特威澤爾、瓦納卡到皇后鎮">
+      <!-- 南島輪廓（示意） -->
+      <path d="M292,28 C318,44 330,74 336,104 C344,142 350,168 344,204
+               C338,242 326,278 312,314 C296,356 278,394 254,428
+               C232,458 206,486 176,500 C152,510 128,504 116,482
+               C104,460 112,432 122,408 C134,378 142,348 152,318
+               C162,288 168,256 180,228 C192,198 206,170 222,144
+               C238,116 254,88 268,62 C276,46 282,34 292,28 Z"
+            fill="#F3FAFB" stroke="#BCD9E0" stroke-width="2"/>
+      <!-- 主路線 -->
+      <path d="M312,150 C288,176 266,196 256,214 C246,232 244,248 240,266
+               C236,286 234,296 232,306 C224,330 210,344 200,356 C190,368 182,376 176,388"
+            fill="none" stroke="#3EA8BE" stroke-width="4" stroke-linecap="round"/>
+      <!-- 庫克山支線（虛線） -->
+      <path d="M240,266 C232,252 226,240 222,226" fill="none" stroke="#3EA8BE" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round"/>
+      <!-- 站點 -->
+      <g font-family="'Noto Sans TC',sans-serif" font-size="13" fill="#22303E">
+        <circle cx="312" cy="150" r="8" fill="#16243A"/>
+        <text x="326" y="147" font-weight="700">基督城 ✈ 9/20</text>
+        <text x="326" y="163" font-size="11" fill="#5B6B7A">14:30 降落取車</text>
+
+        <circle cx="256" cy="214" r="7" fill="#3EA8BE"/>
+        <text x="270" y="211" font-weight="700">Burkes Pass / Tekapo</text>
+        <text x="270" y="227" font-size="11" fill="#5B6B7A">🌌 觀星｜宿 9/20</text>
+
+        <circle cx="222" cy="226" r="7" fill="#C79A3F"/>
+        <text x="118" y="214" font-weight="700">庫克山 🧊</text>
+        <text x="106" y="230" font-size="11" fill="#5B6B7A">冰川健行 9/22</text>
+
+        <circle cx="240" cy="266" r="7" fill="#3EA8BE"/>
+        <text x="254" y="270" font-weight="700">Twizel</text>
+        <text x="254" y="286" font-size="11" fill="#5B6B7A">宿 9/21–23（兩晚）</text>
+
+        <circle cx="200" cy="356" r="7" fill="#3EA8BE"/>
+        <text x="214" y="353" font-weight="700">Wanaka 🪂</text>
+        <text x="214" y="369" font-size="11" fill="#5B6B7A">跳傘｜宿 9/23–25</text>
+
+        <circle cx="176" cy="388" r="8" fill="#16243A"/>
+        <text x="60" y="392" font-weight="700">皇后鎮</text>
+        <text x="34" y="408" font-size="11" fill="#5B6B7A">宿 9/25–27</text>
+        <text x="34" y="424" font-size="11" fill="#5B6B7A">9/27 ✈ 20:00 飛奧克蘭</text>
+      </g>
+      <text x="210" y="522" text-anchor="middle" font-size="11" fill="#8AA2AE" font-family="'Noto Sans TC',sans-serif">＊示意圖非實際比例｜虛線為庫克山來回支線</text>
+    </svg>
+  </div>
+  <p class="map-caption">總車程約 630 km｜最長單日移動 3 小時（第一天基督城 → Burkes Pass）</p>
+</section>
+
+<!-- ═══ 一頁總覽 ═══ -->
+<section>
+  <div class="rule"></div>
+  <div class="sec-head"><h2>八天總覽</h2><span class="sub">先看這張就懂</span></div>
+  <table>
+    <tr><th>日期</th><th>路線與重點</th><th>當晚住宿</th></tr>
+    <tr><td>9/20 六</td><td>基督城取車 → Burkes Pass → Tekapo 晚餐＋<b>🌌 觀星團</b></td><td>Burkes Pass 度假屋</td></tr>
+    <tr><td>9/21 日</td><td>Tekapo 溫泉 → Pukaki 湖（鮭魚生魚片）→ Twizel 超市補貨</td><td>Twizel Airbnb</td></tr>
+    <tr><td>9/22 一</td><td><b>🧊 塔斯曼冰川直升機健行</b> → 胡克谷步道</td><td>Twizel Airbnb</td></tr>
+    <tr><td>9/23 二</td><td>Clay Cliffs 土柱 → Lindis Pass → Wanaka 孤獨的樹</td><td>Wanaka Airbnb</td></tr>
+    <tr><td>9/24 三</td><td><b>🪂 Skydive Wanaka 跳傘</b> → 下午自由（迷宮／爬山）</td><td>Wanaka Airbnb</td></tr>
+    <tr><td>9/25 四</td><td>皇冠山脈公路 → Cardrona 老酒吧 → 箭鎮 → 皇后鎮纜車夕陽</td><td>Heartland Hotel</td></tr>
+    <tr><td>9/26 五</td><td>Glenorchy 魔戒公路 → 皇后鎮市區・Fergburger</td><td>Heartland Hotel</td></tr>
+    <tr><td>9/27 六</td><td>悠閒半天・買伴手禮 → 17:30 還車 → <b>20:00 ✈ 奧克蘭</b></td><td>奧克蘭機場（待訂 🟡）</td></tr>
+  </table>
+  <p class="t-note">✅ 前 7 晚住宿均已確認訂妥（訂房擔當：任俞 ×1、Annie ×2、Peggy ×1）；奧克蘭機場那晚討論中。</p>
+</section>
+
+<!-- ═══ 每日行程 ═══ -->
+<section>
+  <div class="rule"></div>
+  <div class="sec-head"><h2>每日行程</h2><span class="sub">跟著路線帶往南走</span></div>
+
+  <div class="route">
+
+    <div class="day hl">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/20 六</span><span class="day-title">基督城 → Burkes Pass｜觀星夜</span></div>
+        <div class="drive">🚗 車程 <span class="mono">約 3 hr / 227 km</span>（經 Geraldine 中停）</div>
+        <ul>
+          <li><span class="tt">14:30</span>降落基督城，入境＋取車約 1–1.5 小時</li>
+          <li><span class="tt">16:00</span>機場旁超市大採買（水、零食、早餐——Tekapo 物價高）</li>
+          <li><span class="tt">18:15</span>Burkes Pass 度假屋 check-in、放行李</li>
+          <li><span class="tt">19:00</span>Tekapo 晚餐：湖景日式 Kohan（鮭魚丼）</li>
+          <li class="star"><span class="tt">21:30</span>Dark Sky Project「Summit」觀星團：上 Mt John 山頂天文台，有中文場</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>高山景觀伯克斯山口度假屋</b>（Burkes Pass）｜訂房：任俞 ✅</div>
+        <div class="tip">觀星團結束後回度假屋約 25 分鐘山路，深夜慢開（防結冰＋野兔）。備案：度假屋院子光害更少，抬頭就是銀河。</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/21 日</span><span class="day-title">Tekapo → Twizel｜溫泉與冰川湖</span></div>
+        <div class="drive">🚗 車程 <span class="mono">約 1 hr / 80 km</span>（含 Pukaki 繞路）</div>
+        <ul>
+          <li><span class="tt">09:30</span>好牧羊人教堂白天版＋湖邊散步</li>
+          <li><span class="tt">10:30</span>Tekapo Springs 溫泉：邊泡邊看雪山湖景（約 NZ$40）</li>
+          <li><span class="tt">13:30</span>Lake Pukaki 觀景點：牛奶藍冰川湖直望庫克山</li>
+          <li class="star"><span class="tt">13:45</span>High Country Salmon 鮭魚生魚片（約 NZ$15–20/盒）</li>
+          <li><span class="tt">15:00</span>Twizel check-in → Four Square 超市補兩天食材，Airbnb 開伙</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Twizel Airbnb</b>（7 The Drive）｜訂房：Annie ✅（連住兩晚）</div>
+        <div class="tip">Twizel 也在奧拉基暗空保護區內——第一晚沒看到星星的話，今晚還有機會。</div>
+      </div>
+    </div>
+
+    <div class="day hl">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/22 一</span><span class="day-title">塔斯曼冰川健行日</span></div>
+        <div class="drive">🚗 Twizel ⇄ 庫克山 <span class="mono">單程約 45 min</span></div>
+        <ul>
+          <li><span class="tt">07:15</span>出發（早餐在 Airbnb 解決）</li>
+          <li class="star"><span class="tt">08:15</span>Mt Cook Glacier Guiding 報到：直升機上塔斯曼冰川，冰爪健行約 3–4 hr（約 NZ$750–800/人，含裝備）</li>
+          <li><span class="tt">14:00</span>胡克谷步道 Hooker Valley Track：來回 3 hr／10 km 全平緩，三座吊橋＋冰河湖＋正面庫克山</li>
+          <li><span class="tt">18:00</span>回 Twizel 休息、開伙慶功</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Twizel Airbnb</b>（同前晚）</div>
+        <div class="tip warn">冰川健行 100% 看天氣，取消率不低。已訂最早場次——若取消可爭取下午或隔天早上補位（我們 9/23 才離開，有緩衝）。穿防水外套＋登山鞋。</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/23 二</span><span class="day-title">Twizel → Wanaka｜異星地貌與金色隘口</span></div>
+        <div class="drive">🚗 車程 <span class="mono">約 2 hr / 175 km</span>（Twizel 出發比原計畫省 45 分鐘）</div>
+        <ul>
+          <li><span class="tt">10:00</span>Clay Cliffs 土柱奇岩：最後 5 km 碎石路慢開，入場每車 NZ$10 現金</li>
+          <li><span class="tt">12:00</span>Omarama 午餐</li>
+          <li><span class="tt">13:00</span>翻越 Lindis Pass 金色草原（有觀景點）</li>
+          <li><span class="tt">14:30</span>Wanaka Northlake Airbnb check-in</li>
+          <li class="star"><span class="tt">16:30</span>That Wanaka Tree 孤獨的樹：傍晚光線最美，沿湖散步進市區晚餐</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Wanaka Airbnb</b>（16/7 Northlake Drive，洗手棚分開房源）｜訂房：Annie ✅（連住兩晚）</div>
+        <div class="tip warn">9 月 Lindis Pass 偶有結冰，早上出發前查 NZTA 路況。</div>
+      </div>
+    </div>
+
+    <div class="day hl">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/24 三</span><span class="day-title">Wanaka 跳傘日</span></div>
+        <div class="drive">🚗 住處 → Skydive Wanaka <span class="mono">僅約 10 min</span></div>
+        <ul>
+          <li class="star"><span class="tt">08:00</span>Skydive Wanaka 最早場：15,000 ft、60 秒自由落體俯瞰雪山湖泊（約 NZ$559–619，攝影加購 NZ$199–299）</li>
+          <li><span class="tt">13:00</span>下午二選一：<b>A</b> Puzzling World 錯覺屋＋大迷宮（約 NZ$27.5）／<b>B</b> Roys Peak 來回 5–6 hr（體力好者，山頂有殘雪需登山鞋）</li>
+          <li><span class="tt">17:30</span>Rippon 湖畔酒莊品酒看夕陽（tasting 約 NZ$15–20）</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Wanaka Airbnb</b>（同前晚）</div>
+        <div class="tip warn">跳傘因風取消很常見，可免費改期——隔天早上出發前是天然備案。體重上限約 100–105 kg，前一晚別喝酒。</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/25 四</span><span class="day-title">皇冠山脈公路 → 皇后鎮</span></div>
+        <div class="drive">🚗 車程 <span class="mono">約 1.5 hr / 70 km</span>（Crown Range 全紐最高公路）</div>
+        <ul>
+          <li><span class="tt">10:30</span>Cardrona Hotel：1863 年淘金老酒吧，全紐最上鏡建築</li>
+          <li><span class="tt">12:30</span>箭鎮 Arrowtown 午餐：淘金老街＋華工村遺址（有中文解說）＋Patagonia 冰淇淋</li>
+          <li><span class="tt">15:00</span>Heartland Hotel check-in（免費停車，之後市區全靠步行）</li>
+          <li class="star"><span class="tt">16:30</span>Skyline 纜車上 Bob's Peak＋Luge 滑板車＋山頂夕陽（纜車來回約 NZ$64，含 Luge 約 NZ$90+）</li>
+          <li><span class="tt">19:30</span>下山吃 Fergburger（NZ$15–20）</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Heartland Hotel Queenstown</b>（27 Stanley St）｜訂房：Peggy（刷任俞的卡）✅（連住兩晚）</div>
+        <div class="tip warn">Crown Range 若降雪需雪鏈或封路 → 改走 Cromwell（SH6，多 20 分鐘），順路買水果小鎮冰淇淋。</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/26 五</span><span class="day-title">Glenorchy 魔戒公路＋皇后鎮</span></div>
+        <div class="drive">🚗 皇后鎮 ⇄ Glenorchy <span class="mono">單程約 45 min</span></div>
+        <ul>
+          <li class="star"><span class="tt">09:30</span>Glenorchy 碼頭：號稱全紐最美湖畔公路，紅色小屋＋棧橋必拍（免費）</li>
+          <li><span class="tt">14:00</span>皇后鎮自由活動：湖邊花園散步／Onsen 崖邊湯屋（NZ$120+，需早訂）／Shotover 噴射快艇（NZ$169）／Kawarau 高空彈跳（NZ$275）任選</li>
+          <li><span class="tt">18:00</span>回飯店整理行李（明天退房）</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>Heartland Hotel Queenstown</b>（同前晚）</div>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-card">
+        <div class="day-top"><span class="day-date">9/27 六</span><span class="day-title">皇后鎮 → ✈ 奧克蘭</span></div>
+        <div class="drive">🚗 市區 → 機場 <span class="mono">約 15 min</span>｜✈ ZQN 20:00 起飛</div>
+        <ul>
+          <li><span class="tt">10:00</span>退房（行李寄放飯店），湖濱悠閒半天</li>
+          <li><span class="tt">午後</span>伴手禮採買：麥蘆卡蜂蜜、綿羊油、Whittaker's 巧克力（超市最便宜）</li>
+          <li><span class="tt">17:00</span>加滿油 → 17:30 前還車，提早 2 小時到機場</li>
+          <li><span class="tt">20:00</span>飛奧克蘭，入住機場飯店</li>
+        </ul>
+        <div class="stay">🏠 宿：<b>奧克蘭機場飯店</b>｜🟡 討論中（候選：Novotel／Pullman 走路直達航廈、Jet Park 有免費接駁）</div>
+        <div class="tip warn">⏰ 紐西蘭夏令時間 9/27 凌晨 2:00 開始，時鐘撥快 1 小時！手機會自動調，但請再三確認班機時間認知正確。</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ 預算 ═══ -->
+<section>
+  <div class="rule"></div>
+  <div class="sec-head"><h2>每人預算估算</h2><span class="sub">不含國際機票</span></div>
+  <table>
+    <tr><th>項目</th><th>內容</th><th style="text-align:right">每人 NZD</th></tr>
+    <tr><td>三大體驗</td><td>觀星 219＋冰川健行 780＋跳傘 600</td><td class="money" style="text-align:right">≈ 1,600</td></tr>
+    <tr><td>住宿 7 晚</td><td>度假屋／Airbnb／飯店均攤</td><td class="money" style="text-align:right">700–1,100</td></tr>
+    <tr><td>租車＋油</td><td>4 人分攤（車 NZ$80–120/天＋油約 250）</td><td class="money" style="text-align:right">250–350</td></tr>
+    <tr><td>餐費</td><td>每日 NZ$60–80（Airbnb 開伙可壓低）</td><td class="money" style="text-align:right">450–550</td></tr>
+    <tr><td>其他</td><td>纜車、溫泉、門票、伴手禮</td><td class="money" style="text-align:right">150–250</td></tr>
+    <tr class="total-row"><td>合計</td><td>—</td><td class="money" style="text-align:right">≈ 3,200–3,800</td></tr>
+  </table>
+  <p class="fx">＊約新台幣 <b>6.0–7.2 萬</b>（匯率 1 NZD ≈ 18–19 TWD）。攝影加購、彈跳／快艇等自選活動另計；活動價格以官網當期為準。</p>
+</section>
+
+<!-- ═══ 注意事項 ═══ -->
+<section>
+  <div class="rule"></div>
+  <div class="sec-head"><h2>行前注意事項</h2><span class="sub">出發前全員必讀</span></div>
+  <div class="notes">
+    <div class="note-card alert">
+      <h3>⏰ 夏令時間就在回程日</h3>
+      <p>9/27（日）凌晨 2:00 時鐘撥快 1 小時。手機自動調整，但全員請確認「20:00 起飛」是新時間，別誤機。</p>
+    </div>
+    <div class="note-card alert">
+      <h3>🌦 三大活動全看天氣</h3>
+      <p>觀星、冰川、跳傘都可能因天候取消（可退款／改期）。行程已在庫克山、Wanaka 各留緩衝——取消就爭取隔天早上補位，心態放輕鬆。</p>
+    </div>
+    <div class="note-card">
+      <h3>🚗 自駕須知</h3>
+      <ul>
+        <li>右駕靠左行；圓環讓右方來車</li>
+        <li>單線橋（One Lane Bridge）看標誌讓車</li>
+        <li>台灣駕照＋國際駕照（IDP）兩份都要帶</li>
+        <li>每天出發前查 NZTA 路況（9 月山口可能結冰）</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h3>🧥 9 月＝初春穿著</h3>
+      <ul>
+        <li>日夜溫差大：清晨 −2°C ～ 白天 15°C</li>
+        <li>洋蔥式穿法＋防水外套＋毛帽手套</li>
+        <li>觀星夜山頂接近 0°C，羽絨衣必備</li>
+        <li>登山鞋：冰川日＋胡克谷都用得到</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h3>🛂 入境與證件</h3>
+      <ul>
+        <li>NZeTA 電子簽（約 NZ$100 含觀光稅）最晚提前 72 hr 申請</li>
+        <li>生鮮食品、蜂蜜、水果不可入境，罰款很重</li>
+        <li>登山鞋若沾土請刷乾淨再入境（生物安檢）</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h3>📶 網路與補給</h3>
+      <ul>
+        <li>機場買 One NZ／Spark 旅遊 SIM（NZ$40–60）</li>
+        <li>山區訊號不穩，離線地圖先下載</li>
+        <li>大採買：基督城機場旁＋Twizel＋Wanaka</li>
+        <li>Clay Cliffs 入場費請備現金 NZ$10/車</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div>NZ SOUTH ISLAND · <span class="mono">2026.09.20 – 09.27</span></div>
+  <div style="margin-top:6px">住宿 7 晚已確認 ✅｜奧克蘭機場飯店討論中 🟡｜活動請依官網最新價格與時段預訂</div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(function(){
+  var el = document.getElementById('livemap');
+  if (!el || typeof L === 'undefined') { if(el){el.innerHTML='<p style="padding:20px;color:#5B6B7A;font-size:14px">互動地圖需要網路連線，離線時請參考下方示意圖。</p>';el.style.height='auto';} return; }
+
+  var map = L.map('livemap', {scrollWheelZoom:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var C = {stay:'#16243A', big:'#C79A3F', poi:'#3EA8BE'};
+
+  // [緯度, 經度, 名稱, 說明, 類型]
+  var stops = [
+    [-43.4876, 172.5374, '基督城機場', '9/20 14:30 降落取車｜旁邊超市先採買', 'poi'],
+    [-44.0890, 170.6532, '🏠 Burkes Pass 度假屋', '宿 9/20（任俞 ✅）｜院子抬頭就是銀河', 'stay'],
+    [-44.0034, 170.4825, '🌌 Tekapo 好牧羊人教堂＋觀星', '9/20 晚餐後 Dark Sky Project 觀星團（約NZ$219）', 'big'],
+    [-43.9948, 170.4609, 'Tekapo Springs 溫泉', '9/21 上午泡湯看雪山（約NZ$40）', 'poi'],
+    [-44.1899, 170.1399, 'Lake Pukaki 觀景點', '9/21 牛奶藍冰川湖｜鮭魚生魚片必吃', 'poi'],
+    [-44.2688, 170.0734, '🏠 Twizel Airbnb', '宿 9/21–23 兩晚（Annie ✅）｜有超市可開伙', 'stay'],
+    [-43.7664, 170.1327, '🧊 塔斯曼冰川健行', '9/22 08:15 報到｜直升機＋冰爪健行（約NZ$780）', 'big'],
+    [-43.7181, 170.0940, '胡克谷步道', '9/22 下午｜來回3hr 吊橋＋冰河湖', 'poi'],
+    [-44.4890, 169.8670, 'Clay Cliffs 土柱', '9/23｜碎石路慢開，每車NZ$10現金', 'poi'],
+    [-44.6749, 169.1600, '🏠 Wanaka Airbnb（Northlake）', '宿 9/23–25 兩晚（Annie ✅）｜離跳傘場10分鐘', 'stay'],
+    [-44.6983, 169.1176, '孤獨的樹', '9/23 傍晚光線最美', 'poi'],
+    [-44.7253, 169.2476, '🪂 Skydive Wanaka', '9/24 08:00 最早場｜15,000ft（約NZ$559–619）', 'big'],
+    [-44.6967, 169.1616, 'Puzzling World', '9/24 下午備案｜錯覺屋＋大迷宮（NZ$27.5）', 'poi'],
+    [-44.8815, 169.0036, 'Cardrona Hotel 老酒吧', '9/25｜1863年淘金老酒吧', 'poi'],
+    [-44.9375, 168.8280, '箭鎮 Arrowtown', '9/25 午餐｜老街＋華工村遺址', 'poi'],
+    [-45.0324, 168.6649, '🏠 Heartland Hotel', '宿 9/25–27 兩晚（Peggy ✅）｜免費停車，步行下山5–8分', 'stay'],
+    [-45.0285, 168.6562, 'Skyline 纜車＋Luge', '9/25 傍晚｜山頂看夕陽（含Luge約NZ$90+）', 'poi'],
+    [-44.8516, 168.3810, 'Glenorchy 碼頭', '9/26 上午｜魔戒公路，紅色小屋必拍', 'poi'],
+    [-45.0198, 168.7453, '皇后鎮機場', '9/27 17:30前還車｜20:00 ✈ 奧克蘭', 'poi']
+  ];
+
+  var bounds = [];
+  stops.forEach(function(s){
+    var type = s[4];
+    var m = L.circleMarker([s[0], s[1]], {
+      radius: type==='big' ? 10 : (type==='stay' ? 9 : 7),
+      color: '#ffffff', weight: 2.5,
+      fillColor: C[type], fillOpacity: 1
+    }).addTo(map);
+    m.bindPopup('<b>' + s[2] + '</b><br>' + s[3]);
+    bounds.push([s[0], s[1]]);
+  });
+
+  function line(pts, dashed){
+    L.polyline(pts, {
+      color:'#3EA8BE', weight:4, opacity:.85,
+      dashArray: dashed ? '8 8' : null, lineCap:'round'
+    }).addTo(map);
+  }
+
+  // 主路線：機場→Burkes Pass→Tekapo→溫泉→Pukaki→Twizel→Clay Cliffs→Wanaka→孤獨的樹→Cardrona→箭鎮→飯店
+  line([[-43.4876,172.5374],[-44.0890,170.6532],[-44.0034,170.4825],[-43.9948,170.4609],
+        [-44.1899,170.1399],[-44.2688,170.0734],[-44.4890,169.8670],[-44.6749,169.1600],
+        [-44.6983,169.1176],[-44.8815,169.0036],[-44.9375,168.8280],[-45.0324,168.6649]]);
+  // 支線（一日來回）
+  line([[-44.2688,170.0734],[-43.7664,170.1327],[-43.7181,170.0940]], true);   // Twizel ⇄ 庫克山
+  line([[-44.6749,169.1600],[-44.7253,169.2476]], true);                        // Wanaka ⇄ 跳傘場
+  line([[-45.0324,168.6649],[-44.8516,168.3810]], true);                        // 皇后鎮 ⇄ Glenorchy
+  line([[-45.0324,168.6649],[-45.0198,168.7453]], true);                        // 飯店 → 機場
+
+  map.fitBounds(bounds, {padding:[30,30]});
+})();
+</script>
+
+</body>
+</html>
