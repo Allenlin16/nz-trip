@@ -57,7 +57,13 @@ section{padding:52px 0 8px}
 
 /* ── 路線圖 ── */
 .livemap-card{background:var(--snow);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(22,36,58,.05);margin-bottom:18px}
+.day-tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 12px 10px;background:#FAFDFD;border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.day-tabs button{flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--ink-soft);background:var(--snow);border:1.5px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;line-height:1.2;transition:all .15s}
+.day-tabs button small{display:block;font-size:10px;font-weight:500;letter-spacing:.04em;opacity:.75}
+.day-tabs button.on{color:#fff;background:var(--night);border-color:var(--night)}
+.day-tabs button:focus-visible{outline:2px solid var(--glacier);outline-offset:2px}
 #livemap{height:480px;width:100%}
+.num-pin{width:26px;height:26px;border-radius:50%;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
 .legend{display:flex;flex-wrap:wrap;gap:14px;padding:11px 16px;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);background:#FAFDFD}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .lg-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
@@ -151,6 +157,7 @@ footer .mono{color:#DFF0F4}
   <div class="rule"></div>
   <div class="sec-head"><h2>路線總覽</h2><span class="sub">互動地圖：可縮放・點標記看說明</span></div>
   <div class="livemap-card">
+    <div id="day-tabs" class="day-tabs" role="tablist" aria-label="依天數切換路線"></div>
     <div id="livemap" role="application" aria-label="南島行程互動地圖"></div>
     <div class="legend">
       <span><i class="lg-dot" style="background:#16243A"></i>住宿點</span>
@@ -158,6 +165,7 @@ footer .mono{color:#DFF0F4}
       <span><i class="lg-dot" style="background:#3EA8BE"></i>景點</span>
       <span><i class="lg-line"></i>主路線</span>
       <span><i class="lg-dash"></i>一日來回支線</span>
+      <span>🔢 分天檢視＝當日行進順序</span>
     </div>
   </div>
   <p class="map-caption" style="margin-bottom:18px">＊路線為點對點直線示意，實際行駛依公路；離線時請看下方示意圖。</p>
@@ -447,59 +455,119 @@ footer .mono{color:#DFF0F4}
 
   var C = {stay:'#16243A', big:'#C79A3F', poi:'#3EA8BE'};
 
-  // [緯度, 經度, 名稱, 說明, 類型]
-  var stops = [
-    [-43.4876, 172.5374, '基督城機場', '9/20 14:30 降落取車｜旁邊超市先採買', 'poi'],
-    [-44.0890, 170.6532, '🏠 Burkes Pass 度假屋', '宿 9/20（任俞 ✅）｜院子抬頭就是銀河', 'stay'],
-    [-44.0034, 170.4825, '🌌 Tekapo 好牧羊人教堂＋觀星', '9/20 晚餐後 Dark Sky Project 觀星團（約NZ$219）', 'big'],
-    [-43.9948, 170.4609, 'Tekapo Springs 溫泉', '9/21 上午泡湯看雪山（約NZ$40）', 'poi'],
-    [-44.1899, 170.1399, 'Lake Pukaki 觀景點', '9/21 牛奶藍冰川湖｜鮭魚生魚片必吃', 'poi'],
-    [-44.2688, 170.0734, '🏠 Twizel Airbnb', '宿 9/21–23 兩晚（Annie ✅）｜有超市可開伙', 'stay'],
-    [-43.7664, 170.1327, '🧊 塔斯曼冰川健行', '9/22 08:15 報到｜直升機＋冰爪健行（約NZ$780）', 'big'],
-    [-43.7181, 170.0940, '胡克谷步道', '9/22 下午｜來回3hr 吊橋＋冰河湖', 'poi'],
-    [-44.4890, 169.8670, 'Clay Cliffs 土柱', '9/23｜碎石路慢開，每車NZ$10現金', 'poi'],
-    [-44.6749, 169.1600, '🏠 Wanaka Airbnb（Northlake）', '宿 9/23–25 兩晚（Annie ✅）｜離跳傘場10分鐘', 'stay'],
-    [-44.6983, 169.1176, '孤獨的樹', '9/23 傍晚光線最美', 'poi'],
-    [-44.7253, 169.2476, '🪂 Skydive Wanaka', '9/24 08:00 最早場｜15,000ft（約NZ$559–619）', 'big'],
-    [-44.6967, 169.1616, 'Puzzling World', '9/24 下午備案｜錯覺屋＋大迷宮（NZ$27.5）', 'poi'],
-    [-44.8815, 169.0036, 'Cardrona Hotel 老酒吧', '9/25｜1863年淘金老酒吧', 'poi'],
-    [-44.9375, 168.8280, '箭鎮 Arrowtown', '9/25 午餐｜老街＋華工村遺址', 'poi'],
-    [-45.0324, 168.6649, '🏠 Heartland Hotel', '宿 9/25–27 兩晚（Peggy ✅）｜免費停車，步行下山5–8分', 'stay'],
-    [-45.0285, 168.6562, 'Skyline 纜車＋Luge', '9/25 傍晚｜山頂看夕陽（含Luge約NZ$90+）', 'poi'],
-    [-44.8516, 168.3810, 'Glenorchy 碼頭', '9/26 上午｜魔戒公路，紅色小屋必拍', 'poi'],
-    [-45.0198, 168.7453, '皇后鎮機場', '9/27 17:30前還車｜20:00 ✈ 奧克蘭', 'poi']
+  // ── 座標常數 ──
+  var CHC=[-43.4876,172.5374], BURKES=[-44.0890,170.6532], CHURCH=[-44.0034,170.4825],
+      SPRINGS=[-43.9948,170.4609], PUKAKI=[-44.1899,170.1399], TWIZEL=[-44.2688,170.0734],
+      GLACIER=[-43.7664,170.1327], HOOKER=[-43.7181,170.0940], CLAY=[-44.4890,169.8670],
+      WK_STAY=[-44.6749,169.1600], TREE=[-44.6983,169.1176], SKYDIVE=[-44.7253,169.2476],
+      PUZZLE=[-44.6967,169.1616], CARDRONA=[-44.8815,169.0036], ARROW=[-44.9375,168.8280],
+      HEART=[-45.0324,168.6649], SKYLINE=[-45.0285,168.6562], GLEN=[-44.8516,168.3810],
+      TOWN=[-45.0317,168.6595], ZQN=[-45.0198,168.7453];
+
+  // ── 分天資料：{stops:[[座標,名稱,說明,類型]...], loop:是否回到起點} ──
+  var DAYS = [
+    {label:'D1', date:'9/20', color:'#16243A', stops:[
+      [CHC,'基督城機場','14:30 降落取車｜旁邊超市先採買','poi'],
+      [BURKES,'🏠 Burkes Pass 度假屋','18:15 check-in（任俞 ✅）','stay'],
+      [CHURCH,'🌌 Tekapo 晚餐＋觀星','21:30 Dark Sky Project 觀星團（約NZ$219）','big']
+    ]},
+    {label:'D2', date:'9/21', color:'#2A7E92', stops:[
+      [BURKES,'🏠 Burkes Pass 出發','09:00 退房','stay'],
+      [SPRINGS,'Tekapo Springs 溫泉','10:30 泡湯看雪山（約NZ$40）','poi'],
+      [PUKAKI,'Lake Pukaki 觀景點','13:30 牛奶藍冰川湖｜鮭魚生魚片','poi'],
+      [TWIZEL,'🏠 Twizel Airbnb','15:00 check-in（Annie ✅）｜超市補貨','stay']
+    ]},
+    {label:'D3', date:'9/22', color:'#C79A3F', loop:true, stops:[
+      [TWIZEL,'🏠 Twizel 出發','07:15 出發（來回一日）','stay'],
+      [GLACIER,'🧊 塔斯曼冰川健行','08:15 報到｜直升機＋冰爪健行（約NZ$780）','big'],
+      [HOOKER,'胡克谷步道','14:00 來回3hr｜吊橋＋冰河湖','poi']
+    ]},
+    {label:'D4', date:'9/23', color:'#3E8E5A', stops:[
+      [TWIZEL,'🏠 Twizel 出發','09:30 退房','stay'],
+      [CLAY,'Clay Cliffs 土柱','10:00 碎石路慢開｜每車NZ$10現金','poi'],
+      [WK_STAY,'🏠 Wanaka Airbnb','14:30 check-in（Annie ✅）','stay'],
+      [TREE,'孤獨的樹','16:30 傍晚光線最美','poi']
+    ]},
+    {label:'D5', date:'9/24', color:'#B4552D', loop:true, stops:[
+      [WK_STAY,'🏠 Wanaka 出發','07:45 出發（來回一日）','stay'],
+      [SKYDIVE,'🪂 Skydive Wanaka','08:00 最早場｜15,000ft（約NZ$559–619）','big'],
+      [PUZZLE,'Puzzling World','13:00 下午備案（或改爬Roys Peak）','poi']
+    ]},
+    {label:'D6', date:'9/25', color:'#6E5AA8', stops:[
+      [WK_STAY,'🏠 Wanaka 出發','10:00 退房｜走皇冠山脈公路','stay'],
+      [CARDRONA,'Cardrona Hotel 老酒吧','10:30 拍照喝咖啡','poi'],
+      [ARROW,'箭鎮 Arrowtown','12:30 午餐｜老街＋華工村遺址','poi'],
+      [HEART,'🏠 Heartland Hotel','15:00 check-in（Peggy ✅）','stay'],
+      [SKYLINE,'Skyline 纜車＋Luge','16:30 山頂夕陽（含Luge約NZ$90+）','poi']
+    ]},
+    {label:'D7', date:'9/26', color:'#3EA8BE', loop:true, stops:[
+      [HEART,'🏠 飯店出發','09:30 出發（來回一日）','stay'],
+      [GLEN,'Glenorchy 碼頭','魔戒公路｜紅色小屋必拍','poi'],
+      [TOWN,'皇后鎮市區','14:00 Fergburger／湯屋／快艇自選','poi']
+    ]},
+    {label:'D8', date:'9/27', color:'#5B6B7A', stops:[
+      [HEART,'🏠 飯店退房','10:00 行李寄放｜湖濱半天','stay'],
+      [TOWN,'市區伴手禮','蜂蜜、綿羊油、巧克力','poi'],
+      [ZQN,'✈ 皇后鎮機場','17:30前還車｜20:00 飛奧克蘭','poi']
+    ]}
   ];
 
-  var bounds = [];
-  stops.forEach(function(s){
-    var type = s[4];
-    var m = L.circleMarker([s[0], s[1]], {
-      radius: type==='big' ? 10 : (type==='stay' ? 9 : 7),
-      color: '#ffffff', weight: 2.5,
-      fillColor: C[type], fillOpacity: 1
-    }).addTo(map);
-    m.bindPopup('<b>' + s[2] + '</b><br>' + s[3]);
-    bounds.push([s[0], s[1]]);
-  });
-
-  function line(pts, dashed){
-    L.polyline(pts, {
-      color:'#3EA8BE', weight:4, opacity:.85,
-      dashArray: dashed ? '8 8' : null, lineCap:'round'
-    }).addTo(map);
+  // ── 圖層工廠 ──
+  function typeMarker(s){
+    var t=s[3];
+    return L.circleMarker(s[0],{radius:t==='big'?10:(t==='stay'?9:7),color:'#fff',weight:2.5,fillColor:C[t],fillOpacity:1})
+            .bindPopup('<b>'+s[1]+'</b><br>'+s[2]);
+  }
+  function numMarker(s,i,color){
+    var icon=L.divIcon({className:'',html:'<div class="num-pin" style="background:'+color+'">'+(i+1)+'</div>',iconSize:[26,26],iconAnchor:[13,13]});
+    return L.marker(s[0],{icon:icon}).bindPopup('<b>'+s[1]+'</b><br>'+s[2]);
   }
 
-  // 主路線：機場→Burkes Pass→Tekapo→溫泉→Pukaki→Twizel→Clay Cliffs→Wanaka→孤獨的樹→Cardrona→箭鎮→飯店
-  line([[-43.4876,172.5374],[-44.0890,170.6532],[-44.0034,170.4825],[-43.9948,170.4609],
-        [-44.1899,170.1399],[-44.2688,170.0734],[-44.4890,169.8670],[-44.6749,169.1600],
-        [-44.6983,169.1176],[-44.8815,169.0036],[-44.9375,168.8280],[-45.0324,168.6649]]);
-  // 支線（一日來回）
-  line([[-44.2688,170.0734],[-43.7664,170.1327],[-43.7181,170.0940]], true);   // Twizel ⇄ 庫克山
-  line([[-44.6749,169.1600],[-44.7253,169.2476]], true);                        // Wanaka ⇄ 跳傘場
-  line([[-45.0324,168.6649],[-44.8516,168.3810]], true);                        // 皇后鎮 ⇄ Glenorchy
-  line([[-45.0324,168.6649],[-45.0198,168.7453]], true);                        // 飯店 → 機場
+  // 總覽圖層
+  var overview=L.layerGroup(), allBounds=[];
+  var seen={};
+  DAYS.forEach(function(d){d.stops.forEach(function(s){
+    var k=s[0].join(',');
+    allBounds.push(s[0]);
+    if(seen[k])return; seen[k]=1;
+    overview.addLayer(typeMarker(s));
+  });});
+  overview.addLayer(L.polyline([CHC,BURKES,CHURCH,SPRINGS,PUKAKI,TWIZEL,CLAY,WK_STAY,TREE,CARDRONA,ARROW,HEART],{color:'#3EA8BE',weight:4,opacity:.85,lineCap:'round'}));
+  [[TWIZEL,GLACIER,HOOKER],[WK_STAY,SKYDIVE],[HEART,GLEN],[HEART,ZQN]].forEach(function(p){
+    overview.addLayer(L.polyline(p,{color:'#3EA8BE',weight:4,opacity:.85,dashArray:'8 8',lineCap:'round'}));
+  });
 
-  map.fitBounds(bounds, {padding:[30,30]});
+  // 每日圖層
+  var dayLayers=DAYS.map(function(d){
+    var g=L.layerGroup(), pts=d.stops.map(function(s){return s[0];});
+    if(d.loop)pts=pts.concat([pts[0]]);
+    g.addLayer(L.polyline(pts,{color:d.color,weight:4.5,opacity:.9,lineCap:'round',dashArray:d.loop?'8 8':null}));
+    d.stops.forEach(function(s,i){g.addLayer(numMarker(s,i,d.color));});
+    g._bounds=d.stops.map(function(s){return s[0];});
+    return g;
+  });
+
+  // ── 分頁切換 ──
+  var tabsEl=document.getElementById('day-tabs');
+  var current=overview; overview.addTo(map); map.fitBounds(allBounds,{padding:[30,30]});
+  function switchTo(layer,bounds,btn){
+    map.removeLayer(current); current=layer; layer.addTo(map);
+    map.fitBounds(bounds,{padding:[42,42],maxZoom:13});
+    tabsEl.querySelectorAll('button').forEach(function(b){b.classList.remove('on');b.style.background='';b.style.borderColor='';});
+    btn.classList.add('on');
+    if(btn.dataset.color){btn.style.background=btn.dataset.color;btn.style.borderColor=btn.dataset.color;}
+  }
+  var allBtn=document.createElement('button');
+  allBtn.textContent='全部'; allBtn.className='on';
+  allBtn.onclick=function(){switchTo(overview,allBounds,allBtn);};
+  tabsEl.appendChild(allBtn);
+  DAYS.forEach(function(d,i){
+    var b=document.createElement('button');
+    b.innerHTML=d.label+'<small>'+d.date+'</small>';
+    b.dataset.color=d.color;
+    b.onclick=function(){switchTo(dayLayers[i],dayLayers[i]._bounds,b);};
+    tabsEl.appendChild(b);
+  });
 })();
 </script>
 
