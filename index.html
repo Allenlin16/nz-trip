@@ -812,6 +812,11 @@ body.offline .offbar{display:block}
 .btn.warn{background:var(--alert)}
 .btn.blk{display:block;width:100%;text-align:center;margin-top:8px}
 .btn[disabled]{opacity:.4;filter:grayscale(.7);pointer-events:none}
+body.guest .edit-btn,body.guest #addExpBtn,body.guest #addNoteBtn,body.guest #impBtn,
+body.guest #viewerDel,body.guest #addMemberBtn,body.guest #newMember,
+body.guest #rateBtn,body.guest #rateInput,body.guest #dangerSec,
+body.guest #expList [data-ex],body.guest #noteList [data-nid]{display:none!important}
+body.guest #memberChips{pointer-events:none}
 .fab-row{display:flex;gap:8px;margin-bottom:14px}
 .fab-row .btn{flex:1;text-align:center}
 label.f{display:block;font-size:12.5px;color:var(--ink-soft);font-weight:600;margin:12px 0 4px}
@@ -1108,12 +1113,27 @@ function money(n){return n.toLocaleString('en-NZ',{maximumFractionDigits:1})}
 
 /* ═══════════ 資料層：localStorage + IndexedDB ═══════════ */
 var DB=null, LSKEY='nztrip-v1';
-function seed(){return {v:1,epoch:0,members:['任俞','Annie','Peggy','Allen'],gone:[],rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
-function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen')}
+function seed(){return {v:1,epoch:0,members:['Grace','Annie','Peggy','Allen'],gone:[],rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
+function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen');
+  if(DB.members.indexOf('任俞')>-1){
+    DB.members=DB.members.filter(function(x){return x!=='任俞'});
+    if(DB.members.indexOf('Grace')<0)DB.members.push('Grace');
+    if(DB.gone.indexOf('任俞')<0)DB.gone.push('任俞');
+  }
+  var rn=function(x){return x==='任俞'?'Grace':x};
+  DB.expenses.forEach(function(e){e.payer=rn(e.payer);if(e.parts)e.parts=e.parts.map(rn);e.by=rn(e.by);if(e.editedBy)e.editedBy=rn(e.editedBy)});
+  DB.notes.forEach(function(n){n.by=rn(n.by);if(n.editedBy)n.editedBy=rn(n.editedBy)});
+  DB.log.forEach(function(l){l.by=rn(l.by)});
+  Object.keys(DB.itin).forEach(function(i){var o=DB.itin[i];if(!o)return;o.by=rn(o.by);
+    if(o.d&&o.d.stay)o.d.stay=o.d.stay.split('任俞').join('Grace')});
+  if(localStorage.getItem('nztrip-me')==='任俞')localStorage.setItem('nztrip-me','Grace');
+}
 function saveLocal(){localStorage.setItem(LSKEY,JSON.stringify(DB))}
 function save(){saveLocal();if(window.schedulePush)schedulePush()}
 function me(){return localStorage.getItem('nztrip-me')||''}
-function logAct(a){DB.log.unshift({at:Date.now(),by:me()||'？',action:a});DB.log=DB.log.slice(0,400)}
+function isGuest(){return !localStorage.getItem('nztrip-key')}
+function guestBlock(){alert('👀 訪客僅能查看。輸入通關暗號後即可記帳、寫記事與編輯行程。');if(window.askKey)askKey();return true}
+function logAct(a){DB.log.unshift({at:Date.now(),by:me()||'？',action:a,ep:DB.epoch||0});DB.log=DB.log.slice(0,400)}
 
 var idb=null;
 function idbOpen(){return new Promise(function(res,rej){
@@ -1147,7 +1167,7 @@ function compressFile(file){return new Promise(function(res,rej){
 })}
 function savePhotos(fileList){var files=Array.prototype.slice.call(fileList);
   return Promise.all(files.map(function(f){return compressFile(f).then(function(durl){
-    var p={id:uid(),dataUrl:durl,by:me(),at:Date.now()};
+    var p={id:uid(),ep:DB.epoch||0,dataUrl:durl,by:me(),at:Date.now()};
     return idbPut('photos',p).then(function(){if(window.pushPhoto)pushPhoto(p);return p.id});
   })}));
 }
@@ -1157,7 +1177,7 @@ function getPhoto(id){if(photoCache[id])return Promise.resolve(photoCache[id]);
 
 /* ═══════════ 行程資料（預設版，可被編輯覆蓋）═══════════ */
 var ITIN=[
-{date:'9/20',wd:'六',hl:1,title:'基督城 → Burkes Pass｜觀星夜',drive:'🚗 約 3 hr / 227 km（經 Geraldine 中停）',stay:'高山景觀伯克斯山口度假屋（Burkes Pass）｜訂房：任俞 ✅',items:[
+{date:'9/20',wd:'六',hl:1,title:'基督城 → Burkes Pass｜觀星夜',drive:'🚗 約 3 hr / 227 km（經 Geraldine 中停）',stay:'高山景觀伯克斯山口度假屋（Burkes Pass）｜訂房：Grace ✅',items:[
  {t:'14:30',x:'降落基督城，入境＋取車約 1–1.5 小時'},
  {t:'16:00',x:'機場旁超市大採買（水、零食、早餐——Tekapo 物價高）'},
  {t:'18:15',x:'Burkes Pass 度假屋 check-in、放行李'},
@@ -1193,7 +1213,7 @@ var ITIN=[
  {t:'13:00',x:'下午二選一：A Puzzling World 錯覺屋＋大迷宮（約 NZ$27.5）／B Roys Peak 來回 5–6 hr（體力好者，山頂殘雪需登山鞋）'},
  {t:'17:30',x:'Rippon 湖畔酒莊品酒看夕陽（tasting 約 NZ$15–20）'}],
  tips:[{w:1,x:'跳傘因風取消很常見，可免費改期——隔天早上出發前是天然備案。體重上限約 100–105 kg，前一晚別喝酒。'}]},
-{date:'9/25',wd:'四',title:'皇冠山脈公路 → Deer Park → 皇后鎮',drive:'🚗 Wanaka → Deer Park 約 1.5 hr｜Deer Park → 箭鎮 約 20 min（今天早點出發）',stay:'Heartland Hotel Queenstown（27 Stanley St）｜訂房：Peggy（刷任俞的卡）✅（連住兩晚）',items:[
+{date:'9/25',wd:'四',title:'皇冠山脈公路 → Deer Park → 皇后鎮',drive:'🚗 Wanaka → Deer Park 約 1.5 hr｜Deer Park → 箭鎮 約 20 min（今天早點出發）',stay:'Heartland Hotel Queenstown（27 Stanley St）｜訂房：Peggy（刷Grace的卡）✅（連住兩晚）',items:[
  {t:'08:00',x:'Wanaka 出發，走 Crown Range 全紐最高公路'},
  {t:'08:45',x:'Cardrona Hotel：1863 年淘金老酒吧快閃拍照＋咖啡（約 20 分鐘）'},
  {t:'10:00',x:'Deer Park Heights 鹿園：餵鹿、羊駝、高地牛，360° 俯瞰皇后鎮，魔戒取景地（每車 NZ$75、最多 8 人，帶 NZ$2 硬幣，約停 2–2.5 hr）',s:1},
@@ -1306,15 +1326,19 @@ function openSpotSheet(di,ii){
   var eh=exps.length?'<label class="f">💰 這裡的花費（共 NZ$'+money(tot)+'）</label>'+exps.map(function(e){return '<div class="sp-row" data-ex="'+e.id+'"><span>'+esc(e.title)+' <small class="muted">'+esc(e.payer)+' 代墊</small></span><b class="mono">'+(e.cur==='TWD'?'NT$':'NZ$')+money(e.amt)+'</b></div>'}).join(''):'';
   var nh=nts.length?'<label class="f">📔 這裡的記事</label>'+nts.map(function(n){return '<div class="sp-row" data-nt="'+n.id+'"><span>'+esc((n.text||'📷 照片').slice(0,24))+'</span><small class="muted">'+esc(n.by)+'</small></div>'}).join(''):'';
   openModal('<h3>📍 '+esc(name)+'</h3><p class="muted">'+esc(d.date+'・'+it.t)+'</p>'+(it.ll?'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrl(it.ll)+'" target="_blank" rel="noopener">🧭 Google 導航到這裡</a>':'')+eh+nh
-   +'<button class="btn blk" id="sp-exp">💰 在這裡記一筆</button>'
-   +'<button class="btn ghost blk" id="sp-note">📔 在這裡寫記事／傳照片</button>');
-  var spot={date:d.date,name:name,key:key};
-  $('#sp-exp').onclick=function(){openExpense(null,spot)};
-  $('#sp-note').onclick=function(){openNote(null,spot)};
-  $$('#sheet [data-ex]').forEach(function(r){r.onclick=function(){openExpense(r.dataset.ex)}});
-  $$('#sheet [data-nt]').forEach(function(r){r.onclick=function(){openNote(r.dataset.nt)}});
+   +(isGuest()?'<p class="muted" style="margin-top:10px">👀 訪客模式僅供查看，輸入通關暗號後可在此記帳與寫記事。</p>'
+     :'<button class="btn blk" id="sp-exp">💰 在這裡記一筆</button>'
+      +'<button class="btn ghost blk" id="sp-note">📔 在這裡寫記事／傳照片</button>'));
+  if(!isGuest()){
+    var spot={date:d.date,name:name,key:key};
+    $('#sp-exp').onclick=function(){openExpense(null,spot)};
+    $('#sp-note').onclick=function(){openNote(null,spot)};
+    $$('#sheet [data-ex]').forEach(function(r){r.onclick=function(){openExpense(r.dataset.ex)}});
+    $$('#sheet [data-nt]').forEach(function(r){r.onclick=function(){openNote(r.dataset.nt)}});
+  }
 }
 function openDayEditor(i){
+  if(isGuest())return guestBlock();
   var d=JSON.parse(JSON.stringify(dayData(i)));
   var oldItems=JSON.parse(JSON.stringify(d.items));
   function cntFor(key,kk){return DB[kk].filter(function(r){return !r.del&&r.spotKey===key}).length}
@@ -1339,7 +1363,7 @@ function openDayEditor(i){
     if(lost.length)msg+='\n\n⚠️ 以下自訂行程點的綁定將解除（紀錄本身不會消失）：\n'+lost.join('\n');
     if(!confirm(msg))return;
     var od=JSON.parse(JSON.stringify(ITIN[i]));
-    DB.itin[i]={d:od,by:me()||'？',at:Date.now()};
+    DB.itin[i]={d:od,by:me()||'？',at:Date.now(),ep:DB.epoch||0};
     logAct('將 '+od.date+' 行程恢復預設');save();renderItin();renderMoney();renderNotes();renderLog();closeModal()};
   $('#ed-add').onclick=function(){$('#ed-items').insertAdjacentHTML('beforeend',edRow({t:'',x:''},0,0,''));bindRm();bindLoc()};
   bindRm();bindLoc();
@@ -1363,7 +1387,7 @@ function openDayEditor(i){
         if(!r.del&&r.spotKey===ok){r.spotKey=nk;r.spotName=nn;r.editedBy=me()||'？';r.editedAt=Date.now();moved++}})})});
     d.items=rows.map(function(it){var o={t:it.t,x:it.x,s:it.s};if(it.ll)o.ll=it.ll;if(it.pt)o.pt=it.pt;return o});
     d.tips=$('#ed-tips').value.split('\n').map(function(l){return l.trim()}).filter(Boolean).map(function(l){return l[0]==='!'?{w:1,x:l.slice(1)}:{w:0,x:l}});
-    DB.itin[i]={d:d,by:me()||'？',at:Date.now()};
+    DB.itin[i]={d:d,by:me()||'？',at:Date.now(),ep:DB.epoch||0};
     logAct('修改了 '+d.date+' 行程「'+d.title+'」'+(moved?'（自動遷移 '+moved+' 筆綁定紀錄）':''));
     save();renderItin();renderMoney();renderNotes();renderLog();closeModal();
   };
@@ -1435,6 +1459,7 @@ function renderBalances(list){
   $('#settleList').innerHTML=out.length?('<b>💸 最少轉帳結清法：</b>'+out.map(function(s){return '<div>'+s+'</div>'}).join('')):'目前大家剛好平帳 🎉';
 }
 function openExpense(id,spot){
+  if(isGuest())return guestBlock();
   var e=id?DB.expenses.find(function(x){return x.id===id}):null;
   var today=new Date(),dstr=e?e.date:(today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2));
   if(!e&&spot&&dateOfDay(spot.date))dstr=dateOfDay(spot.date);
@@ -1463,7 +1488,7 @@ function openExpense(id,spot){
       if(e){Object.assign(e,{title:title,amt:amt,cur:$('#ex-cur').value,date:$('#ex-date').value,cat:$('#ex-cat button.on').dataset.c,payer:payerBtn.dataset.m,parts:parts,editedBy:me()||'？',editedAt:Date.now()});
         if(ids.length)e.photos=(e.photos||[]).concat(ids);
         logAct('編輯支出「'+title+'」NZ 值 '+money(nzd(e)))}
-      else{var rec={id:uid(),by:me()||'？',at:Date.now(),title:title,amt:amt,cur:$('#ex-cur').value,date:$('#ex-date').value,cat:$('#ex-cat button.on').dataset.c,payer:payerBtn.dataset.m,parts:parts,photos:ids};
+      else{var rec={id:uid(),ep:DB.epoch||0,by:me()||'？',at:Date.now(),title:title,amt:amt,cur:$('#ex-cur').value,date:$('#ex-date').value,cat:$('#ex-cat button.on').dataset.c,payer:payerBtn.dataset.m,parts:parts,photos:ids};
         if(spot){rec.spotKey=spot.key;rec.spotName=spot.name;rec.spotDay=spot.date}
         DB.expenses.push(rec);
         logAct('新增支出「'+title+'」由 '+payerBtn.dataset.m+' 代墊')}
@@ -1492,6 +1517,7 @@ function renderNotes(){
   $$('#noteList [data-nid]').forEach(function(b){b.onclick=function(){openNote(b.dataset.nid)}});
 }
 function openNote(id,spot){
+  if(isGuest())return guestBlock();
   var n=id?DB.notes.find(function(x){return x.id===id}):null;
   var opts=['全程'].concat(ITIN.map(function(d){return d.date}));
   var defDay=n?(n.day||'全程'):(spot?spot.date:'全程');
@@ -1507,7 +1533,7 @@ function openNote(id,spot){
     var dv=$('#nt-day').value;dv=dv==='全程'?'':dv;
     var doSave=function(ids){
       if(n){n.text=text;n.day=dv;if(ids.length)n.photos=(n.photos||[]).concat(ids);n.editedBy=me()||'？';n.editedAt=Date.now();logAct('編輯記事（'+(dv||'全程')+'）')}
-      else{var nrec={id:uid(),by:me()||'？',at:Date.now(),day:dv,text:text,photos:ids};
+      else{var nrec={id:uid(),ep:DB.epoch||0,by:me()||'？',at:Date.now(),day:dv,text:text,photos:ids};
       if(spot){nrec.spotKey=spot.key;nrec.spotName=spot.name;nrec.spotDay=spot.date}
       DB.notes.push(nrec);logAct('新增記事（'+(dv||'全程')+'）'+(ids.length?'＋'+ids.length+'張照片':''))}
       save();renderNotes();renderWall();renderLog();renderItin();closeModal();
@@ -1517,6 +1543,7 @@ function openNote(id,spot){
   if(n)$('#nt-del').onclick=function(){if(confirm('確定刪除這則記事？')){n.del=1;n.editedBy=me()||'？';n.editedAt=Date.now();logAct('刪除一則記事');save();renderNotes();renderWall();renderLog();renderItin();closeModal()}};
 }
 function deletePhoto(id){
+  if(isGuest())return guestBlock();
   idbDel('photos',id);delete photoCache[id];
   ['expenses','notes'].forEach(function(k){DB[k].forEach(function(r){
     if(r.photos&&r.photos.indexOf(id)>-1){r.photos=r.photos.filter(function(x){return x!==id});r.editedBy=me()||'？';r.editedAt=Date.now()}
@@ -1551,19 +1578,23 @@ function mergeIn(inc){
   (inc.db.gone||[]).forEach(function(m){if(DB.gone.indexOf(m)<0){DB.gone.push(m);added++}});
   DB.members=DB.members.filter(function(x){return DB.gone.indexOf(x)<0});
   ['expenses','notes'].forEach(function(k){(inc.db[k]||[]).forEach(function(r){
+    r.ep=Math.max(r.ep||0,DB.epoch||0);
     var cur=DB[k].find(function(x){return x.id===r.id});
     if(!cur){DB[k].push(r);added++}
     else if((r.editedAt||r.at)>(cur.editedAt||cur.at)){Object.assign(cur,r);added++}
   })});
   Object.keys(inc.db.itin||{}).forEach(function(i){
+    if(inc.db.itin[i])inc.db.itin[i].ep=Math.max(inc.db.itin[i].ep||0,DB.epoch||0);
     if(!DB.itin[i]||inc.db.itin[i].at>DB.itin[i].at){DB.itin[i]=inc.db.itin[i];added++}
   });
   if((inc.db.rateAt||0)>(DB.rateAt||0)){DB.rate=inc.db.rate;DB.rateAt=inc.db.rateAt}
   (inc.db.log||[]).forEach(function(l){
+    l.ep=Math.max(l.ep||0,DB.epoch||0);
     if(!DB.log.some(function(x){return x.at===l.at&&x.by===l.by&&x.action===l.action}))DB.log.push(l);
   });
   DB.log.sort(function(a,b){return b.at-a.at});DB.log=DB.log.slice(0,400);
   var pp=Promise.all((inc.photos||[]).map(function(p){
+    p.ep=Math.max(p.ep||0,DB.epoch||0);
     return idbGet('photos',p.id).then(function(cur){return cur?null:idbPut('photos',p).then(function(){added++})})
   }));
   return pp.then(function(){return added});
@@ -1587,6 +1618,7 @@ $('#impFile').onchange=function(){
 
 /* ═══════════ 成員 / 匯率 / 紀錄 ═══════════ */
 function tryRemoveMember(m){
+  if(isGuest())return guestBlock();
   var used=DB.expenses.some(function(e){return !e.del&&(e.payer===m||(e.parts||[]).indexOf(m)>-1)});
   if(used)return alert('「'+m+'」還有記帳紀錄（代墊或分帳），不能移除。');
   if(m===me())return alert('不能移除自己，先到右上角換身分。');
@@ -1629,7 +1661,7 @@ function setWho(n){
   if(DB.members.indexOf(n)<0){DB.members.push(n);DB.gone=DB.gone.filter(function(x){return x!==n});save();renderMembers()}
   $('#whoName').textContent=n;var ds=$('#dangerSec');if(ds)ds.style.display=n==='Allen'?'block':'none';closeModal();if(window.getKey&&!getKey())setTimeout(askKey,200);
 }
-$('#whoBtn').onclick=function(){pickWho(true)};
+$('#whoBtn').onclick=function(){if(isGuest())askKey();else pickWho(true)};
 
 /* ═══════════ 地圖：由行程資料動態產生（與編輯連動）═══════════ */
 var MAP=null,mapLayer=null;
@@ -1813,15 +1845,13 @@ function askKey(){
    +'<input type="text" id="key-in" placeholder="通關暗號" value="'+esc(getKey())+'">'
    +'<label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:13px"><input type="checkbox" id="key-wipe"> 連線前先清空這支手機的舊資料（換新旅程時勾選）</label>'
    +'<button class="btn blk" id="key-ok">☁️ 連線同步</button>'
-   +'<div class="muted" id="key-ok-hint" style="font-size:12px;text-align:center;margin-top:3px"></div>'
-   +'<button class="btn ghost blk" id="key-skip">📴 本機模式</button>'
-   +'<div class="muted" id="key-skip-hint" style="font-size:12px;text-align:center;margin-top:3px"></div>');
+   +'<button class="btn ghost blk" id="key-skip">📴 本機模式</button>');
   function refreshKeyBtns(){
     var ok=$('#key-ok');if(!ok)return;
     var on=navigator.onLine;
-    ok.disabled=!on;$('#key-skip').disabled=on;
-    $('#key-ok-hint').textContent=on?'':'（目前離線，需要網路才能連線同步）';
-    $('#key-skip-hint').textContent=on?'（僅在沒有網路時開放）':'先用本機模式，恢復連線後重開 App 再輸入暗號';
+    ok.disabled=false;
+    ok.textContent=on?'☁️ 連線同步':'☁️ 加入團隊（離線中，恢復連線後自動同步）';
+    $('#key-skip').textContent='👀 以訪客身分查看（唯讀）';
   }
   refreshKeyBtns();
   window.addEventListener('online',refreshKeyBtns);
@@ -1833,7 +1863,7 @@ function askKey(){
       localStorage.setItem('nztrip-pushedph','{}');
       idbClear('photos').then(function(){location.reload()});return}
     closeModal();location.reload()};
-  $('#key-skip').onclick=closeModal;
+  $('#key-skip').onclick=function(){closeModal();renderAll()};
 }
 function fsErr(err){
   if(err&&err.code==='permission-denied'){FSREADY=false;setSyncState('❌ 暗號不正確——到「更多」重新輸入');}
@@ -1843,13 +1873,13 @@ function mergeRec(k,r){var cur=DB[k].find(function(x){return x.id===r.id});
   if(!cur){DB[k].push(r);return 1}
   if((r.editedAt||r.at)>(cur.editedAt||cur.at)){Object.assign(cur,r);return 1}return 0}
 function startSync(){
-  col('expenses').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){var r=c.doc.data();if(!r||!r.id)return;SHADOW.expenses[r.id]=r.editedAt||r.at;d+=mergeRec('expenses',r)});if(d){saveLocal();renderMoney();renderLog();renderItin()}},fsErr);
-  col('notes').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){var r=c.doc.data();if(!r||!r.id)return;SHADOW.notes[r.id]=r.editedAt||r.at;d+=mergeRec('notes',r)});if(d){saveLocal();renderNotes();renderItin()}},fsErr);
-  col('itin').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){var r=c.doc.data();var i=c.doc.id;if(!r||!r.at)return;SHADOW.itin[i]=r.at;if(!DB.itin[i]||r.at>DB.itin[i].at){DB.itin[i]=r;d=1}});if(d){saveLocal();renderItin()}},fsErr);
+  col('expenses').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var r=c.doc.data();if(!r||!r.id)return;if((r.ep||0)<(DB.epoch||0))return;SHADOW.expenses[r.id]=r.editedAt||r.at;d+=mergeRec('expenses',r)});if(d){saveLocal();renderMoney();renderLog();renderItin()}},fsErr);
+  col('notes').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var r=c.doc.data();if(!r||!r.id)return;if((r.ep||0)<(DB.epoch||0))return;SHADOW.notes[r.id]=r.editedAt||r.at;d+=mergeRec('notes',r)});if(d){saveLocal();renderNotes();renderItin()}},fsErr);
+  col('itin').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var r=c.doc.data();var i=c.doc.id;if(!r||!r.at)return;if((r.ep||0)<(DB.epoch||0))return;SHADOW.itin[i]=r.at;if(!DB.itin[i]||r.at>DB.itin[i].at){DB.itin[i]=r;d=1}});if(d){saveLocal();renderItin()}},fsErr);
   col('meta').doc('config').onSnapshot(function(doc){
     META_SEEN=true;
     var m=doc.data();if(!m){schedulePush();return}
-    if((m.epoch||0)>(DB.epoch||0)){doEpochWipe(m.epoch||0);return}
+    if((m.epoch||0)>(DB.epoch||0))doEpochWipe(m.epoch||0);
     var d=0;
     (m.members||[]).forEach(function(x){if(DB.members.indexOf(x)<0){DB.members.push(x);d=1}});
     (m.gone||[]).forEach(function(x){if(DB.gone.indexOf(x)<0){DB.gone.push(x);d=1}});
@@ -1857,18 +1887,18 @@ function startSync(){
     if((m.rateAt||0)>(DB.rateAt||0)){DB.rate=m.rate;DB.rateAt=m.rateAt;d=1}
     if((m.epoch||0)>0)DB.epoch=Math.max(DB.epoch||0,m.epoch||0);
     SHADOW.meta=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
-    if(d){saveLocal();renderMembers();renderMoney()}},fsErr);
-  col('log').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){var l=c.doc.data();if(!l||!l.at)return;SHADOW.log[l.at+'|'+l.by]=1;
+    if(d){saveLocal();renderMembers();renderMoney()}schedulePush()},fsErr);
+  col('log').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var l=c.doc.data();if(!l||!l.at)return;if((l.ep||0)<(DB.epoch||0))return;SHADOW.log[l.at+'|'+l.by]=1;
     if(!DB.log.some(function(x){return x.at===l.at&&x.by===l.by&&x.action===l.action})){DB.log.push(l);d=1}});
     if(d){DB.log.sort(function(a,b){return b.at-a.at});DB.log=DB.log.slice(0,400);saveLocal();renderLog()}},fsErr);
   col('photos').onSnapshot(function(s){s.docChanges().forEach(function(c){
     if(c.type==='removed'){var rid=c.doc.id;idbDel('photos',rid);delete photoCache[rid];renderWall();renderNotes();renderMoney();return}
-    if(c.type!=='added')return;var p=c.doc.data();if(!p||!p.id)return;
+    if(c.type!=='added')return;var p=c.doc.data();if(!p||!p.id)return;if((p.ep||0)<(DB.epoch||0))return;
     markPushed(p.id);
     idbGet('photos',p.id).then(function(cur){if(!cur)idbPut('photos',p).then(function(){photoCache[p.id]=p;renderWall();renderNotes();renderMoney()})})})},fsErr);
 }
 function doEpochWipe(n){
-  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.epoch=n||0;
+  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.gone=[];DB.epoch=n||0;
   SHADOW={expenses:{},notes:{},itin:{},meta:'',log:{}};
   photoCache={};localStorage.setItem('nztrip-pushedph','{}');
   idbClear('photos').then(function(){renderWall();renderNotes()});
@@ -1880,19 +1910,19 @@ function markPushed(id){var s=pushedSet();s[id]=1;localStorage.setItem('nztrip-p
 function pushPhoto(p){if(!FSREADY)return;col('photos').doc(p.id).set(p).then(function(){markPushed(p.id)}).catch(function(){})}
 function syncPush(){
   if(!FSREADY||!META_SEEN)return;
-  DB.expenses.forEach(function(r){var st=r.editedAt||r.at;if(SHADOW.expenses[r.id]!==st){SHADOW.expenses[r.id]=st;col('expenses').doc(r.id).set(r).catch(function(){})}});
-  DB.notes.forEach(function(r){var st=r.editedAt||r.at;if(SHADOW.notes[r.id]!==st){SHADOW.notes[r.id]=st;col('notes').doc(r.id).set(r).catch(function(){})}});
-  Object.keys(DB.itin).forEach(function(i){var r=DB.itin[i];if(SHADOW.itin[i]!==r.at){SHADOW.itin[i]=r.at;col('itin').doc(String(i)).set(r).catch(function(){})}});
+  DB.expenses.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.expenses[r.id]!==st){SHADOW.expenses[r.id]=st;col('expenses').doc(r.id).set(r).catch(function(){})}});
+  DB.notes.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.notes[r.id]!==st){SHADOW.notes[r.id]=st;col('notes').doc(r.id).set(r).catch(function(){})}});
+  Object.keys(DB.itin).forEach(function(i){var r=DB.itin[i];if((r.ep||0)<(DB.epoch||0))return;if(SHADOW.itin[i]!==r.at){SHADOW.itin[i]=r.at;col('itin').doc(String(i)).set(r).catch(function(){})}});
   var ms=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
   if(SHADOW.meta!==ms){SHADOW.meta=ms;col('meta').doc('config').set({members:DB.members,gone:DB.gone,rate:DB.rate,rateAt:DB.rateAt,epoch:DB.epoch||0}).catch(function(){})}
-  DB.log.forEach(function(l){var k=l.at+'|'+l.by;if(!SHADOW.log[k]){SHADOW.log[k]=1;col('log').doc(String(l.at)+'_'+Math.random().toString(36).slice(2,6)).set(l).catch(function(){})}});
+  DB.log.forEach(function(l){if((l.ep||0)<(DB.epoch||0))return;var k=l.at+'|'+l.by;if(!SHADOW.log[k]){SHADOW.log[k]=1;col('log').doc(String(l.at)+'_'+Math.random().toString(36).slice(2,6)).set(l).catch(function(){})}});
 }
 var pushT=null;function schedulePush(){if(!FSREADY)return;clearTimeout(pushT);pushT=setTimeout(syncPush,400)}
 function initFirebase(){
   TRIPKEY=getKey();
   var kb=$('#keyBtn');if(kb)kb.onclick=function(){askKey()};
   if(!window.firebase){setSyncState('📴 本機模式（同步元件未載入）');return}
-  if(!TRIPKEY){setSyncState('🔑 尚未輸入暗號（本機模式）');return}
+  if(!TRIPKEY){setSyncState('👀 訪客模式（唯讀）— 點右上角輸入暗號加入');return}
   try{
     if(!firebase.apps.length)firebase.initializeApp(FBCFG);
     FSDB=firebase.firestore();
@@ -1938,11 +1968,11 @@ function bootMap(){
 function netUpdate(){document.body.classList.toggle('offline',!navigator.onLine);$('#netlabel').textContent=navigator.onLine?'連線中':'離線模式'}
 window.addEventListener('online',netUpdate);window.addEventListener('offline',netUpdate);
 
-function renderAll(){renderItin();renderMoney();renderNotes();renderWall();renderMembers();renderLog();$('#whoName').textContent=me()||'選擇成員';var ds=$('#dangerSec');if(ds)ds.style.display=me()==='Allen'?'block':'none'}
+function renderAll(){document.body.classList.toggle('guest',isGuest());renderItin();renderMoney();renderNotes();renderWall();renderMembers();renderLog();$('#whoName').textContent=isGuest()?'👀 訪客':(me()||'選擇成員');var ds=$('#dangerSec');if(ds)ds.style.display=(!isGuest()&&me()==='Allen')?'block':'none'}
 load();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist()}
-idbOpen().then(function(){renderAll();netUpdate();initFirebase();setTimeout(bootMap,120);if(!me())pickWho(false);else if(!getKey())askKey()})
-  .catch(function(){renderAll();netUpdate();initFirebase();setTimeout(bootMap,120);alert('此瀏覽器不支援離線儲存，照片功能將無法使用')});
+idbOpen().then(function(){renderAll();netUpdate();initFirebase();setTimeout(bootMap,120);if(!getKey())askKey();else if(!me())pickWho(false)})
+  .catch(function(){renderAll();netUpdate();initFirebase();setTimeout(bootMap,120);if(!getKey())askKey();else if(!me())pickWho(false);alert('此瀏覽器不支援離線儲存，照片功能將無法使用')});
 </script>
 </body>
 </html>
