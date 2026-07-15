@@ -1024,6 +1024,11 @@ textarea{min-height:84px;resize:vertical}
   <section id="dangerSec" style="display:none">
     <div class="rule" style="background:var(--alert)"></div>
     <div class="sec-head"><h2>危險區</h2><span class="sub">僅限 Allen 操作</span></div>
+    <div class="card">
+      <b>🔓 解除帳號鎖定</b>
+      <p class="muted" style="margin:6px 0 8px">有人選錯帳號時，點名字解除鎖定：選錯的手機會被自動登出並要求重選，該名字即可重新選用。</p>
+      <div class="chips" id="unlockChips"><span class="muted">目前沒有已鎖定的帳號</span></div>
+    </div>
     <div class="card" style="border:1.5px solid var(--alert)">
       <b style="color:var(--alert)">🧹 全團重置（測試轉正式用）</b>
       <p class="muted" style="margin:6px 0 8px">清空雲端與<b>所有成員</b>手機上的記帳、記事、照片與行程修改，回到預設行程；成員名單與匯率保留。其他人打開 App 會自動清空。無法復原，建議先匯出備份。</p>
@@ -1114,8 +1119,10 @@ function money(n){return n.toLocaleString('en-NZ',{maximumFractionDigits:1})}
 
 /* ═══════════ 資料層：localStorage + IndexedDB ═══════════ */
 var DB=null, LSKEY='nztrip-v1';
-function seed(){return {v:1,epoch:0,members:['Grace','Annie','Peggy','Allen'],gone:[],claimed:[],rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
-function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.claimed)DB.claimed=[];if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen');
+function seed(){return {v:1,epoch:0,members:['Grace','Annie','Peggy','Allen'],gone:[],claims:{},rels:{},rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
+function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.claims)DB.claims={};if(!DB.rels)DB.rels={};
+  if(DB.claimed){DB.claimed.forEach(function(n){if(!DB.claims[n])DB.claims[n]=1});delete DB.claimed}
+  if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen');
   if(DB.members.indexOf('任俞')>-1){
     DB.members=DB.members.filter(function(x){return x!=='任俞'});
     if(DB.members.indexOf('Grace')<0)DB.members.push('Grace');
@@ -1133,6 +1140,7 @@ function saveLocal(){localStorage.setItem(LSKEY,JSON.stringify(DB))}
 function save(){saveLocal();if(window.schedulePush)schedulePush()}
 function me(){return localStorage.getItem('nztrip-me')||''}
 function isGuest(){return !localStorage.getItem('nztrip-key')}
+function isTaken(n){return (DB.claims[n]||0)>(DB.rels[n]||0)}
 function guestBlock(){alert('👀 訪客僅能查看。輸入通關暗號後即可記帳、寫記事與編輯行程。');if(window.askKey)askKey();return true}
 function logAct(a){DB.log.unshift({at:Date.now(),by:me()||'？',action:a,ep:DB.epoch||0});DB.log=DB.log.slice(0,400)}
 
@@ -1584,7 +1592,9 @@ function mergeIn(inc){
   var added=0;
   (inc.db.members||[]).forEach(function(m){if(DB.members.indexOf(m)<0){DB.members.push(m);added++}});
   (inc.db.gone||[]).forEach(function(m){if(DB.gone.indexOf(m)<0){DB.gone.push(m);added++}});
-  (inc.db.claimed||[]).forEach(function(m){if(DB.claimed.indexOf(m)<0){DB.claimed.push(m);added++}});
+  Object.keys(inc.db.claims||{}).forEach(function(x){if((inc.db.claims[x]||0)>(DB.claims[x]||0)){DB.claims[x]=inc.db.claims[x];added++}});
+  Object.keys(inc.db.rels||{}).forEach(function(x){if((inc.db.rels[x]||0)>(DB.rels[x]||0)){DB.rels[x]=inc.db.rels[x];added++}});
+  (inc.db.claimed||[]).forEach(function(x){if(!DB.claims[x]){DB.claims[x]=1;added++}});
   DB.members=DB.members.filter(function(x){return DB.gone.indexOf(x)<0});
   ['expenses','notes'].forEach(function(k){(inc.db[k]||[]).forEach(function(r){
     r.ep=Math.max(r.ep||0,DB.epoch||0);
@@ -1661,11 +1671,11 @@ function pickWho(force){
   if(me()&&!force){$('#whoName').textContent=me();return}
   openModal('<h3>你是誰？</h3><p class="muted">⚠️ 確認後將無法切換帳號；已被別人選用的名字無法再選。</p>'
    +'<div class="chips" id="who-chips">'+DB.members.map(function(m){
-      var taken=DB.claimed.indexOf(m)>-1&&m!==me();
+      var taken=isTaken(m)&&m!==me();
       return '<button data-m="'+esc(m)+'"'+(taken?' disabled':'')+'>'+esc(m)+(taken?'（已選用）':'')+'</button>'}).join('')+'</div>'
    +'<label class="f">或輸入新名字</label><div style="display:flex;gap:8px"><input type="text" id="who-new"><button class="btn" id="who-ok" style="flex:0 0 auto">確定</button></div>');
   function tryClaim(n){
-    if(DB.claimed.indexOf(n)>-1&&n!==me())return alert('「'+n+'」已被其他成員選用。');
+    if(isTaken(n)&&n!==me())return alert('「'+n+'」已被其他成員選用。');
     if(!confirm('確認以「'+n+'」的身分使用嗎？\n確認後這支手機將無法切換帳號。'))return;
     setWho(n);
   }
@@ -1675,7 +1685,7 @@ function pickWho(force){
 function setWho(n){
   localStorage.setItem('nztrip-me',n);
   if(DB.members.indexOf(n)<0){DB.members.push(n);DB.gone=DB.gone.filter(function(x){return x!==n})}
-  if(DB.claimed.indexOf(n)<0)DB.claimed.push(n);
+  DB.claims[n]=Date.now();
   save();renderMembers();
   $('#whoName').textContent=n;var ds=$('#dangerSec');if(ds)ds.style.display=n==='Allen'?'block':'none';closeModal();if(window.getKey&&!getKey())setTimeout(askKey,200);
 }
@@ -1841,6 +1851,20 @@ $('#loc-ok').onclick=function(){
 };
 $('#loc-clear').onclick=function(){if(PICKROW){PICKROW.dataset.ll='';PICKROW.dataset.nav='';PICKROW.querySelector('.loc').classList.remove('has')}closeLoc()};
 $('#loc-cancel').onclick=closeLoc;
+function renderUnlock(){
+  var box=$('#unlockChips');if(!box)return;
+  var taken=DB.members.filter(function(m){return isTaken(m)});
+  if(!taken.length){box.innerHTML='<span class="muted">目前沒有已鎖定的帳號</span>';return}
+  box.innerHTML=taken.map(function(m){return '<button class="on" data-u="'+esc(m)+'">'+esc(m)+' 🔓</button>'}).join('');
+  $$('#unlockChips [data-u]').forEach(function(b){b.onclick=function(){
+    var n=b.dataset.u;
+    if(!confirm('解除「'+n+'」的帳號鎖定？\n使用此帳號的手機會被登出並要求重新選擇。'))return;
+    DB.rels[n]=Date.now();
+    logAct('解除帳號「'+n+'」的鎖定');
+    save();renderUnlock();dropSelfCheck();
+    alert('已解除。對方手機連上網路後會自動登出重選。');
+  }});
+}
 var rb=$('#resetAllBtn');
 if(rb)rb.onclick=function(){
   if(me()!=='Allen')return alert('全團重置僅限 Allen 執行（右上角切換身分）');
@@ -1848,7 +1872,7 @@ if(rb)rb.onclick=function(){
   if(!confirm('⚠️ 全團重置會刪除「雲端＋所有成員手機」的記帳、記事、照片與行程修改，回到預設行程。\n通常用於：測試玩夠了，正式出發前清空。\n\n確定繼續？'))return;
   if(!confirm('最後確認：此動作無法復原（可先到下方匯出一份備份留念）。真的要清空全團資料？'))return;
   var ep=Date.now();setSyncState('🧹 重置中…');
-  col('meta').doc('config').set({members:DB.members,gone:[],claimed:[],rate:DB.rate,rateAt:Date.now(),epoch:ep})
+  col('meta').doc('config').set({members:DB.members,gone:[],claims:{},rels:{},rate:DB.rate,rateAt:Date.now(),epoch:ep})
   .then(function(){
     var names=['expenses','notes','itin','log','photos'];
     return Promise.all(names.map(function(n){return col(n).get().then(function(s){return Promise.all(s.docs.map(function(dd){return dd.ref.delete()}))})}))
@@ -1890,6 +1914,20 @@ function askKey(){
     closeModal();location.reload()};
   $('#key-skip').onclick=function(){closeModal();renderAll()};
 }
+function metaStamp(){
+  var srt=function(o){return Object.keys(o).sort().map(function(k){return k+':'+o[k]}).join('|')};
+  return JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),srt(DB.claims),srt(DB.rels),DB.rate,DB.rateAt,DB.epoch||0]);
+}
+function dropSelfCheck(){
+  var n=me();
+  if(!n)return;
+  if((DB.rels[n]||0)>(DB.claims[n]||0)){
+    localStorage.removeItem('nztrip-me');
+    saveLocal();renderAll();
+    alert('🔓 你的身分「'+n+'」已被 Allen 解除鎖定。\n請重新選擇你的帳號。');
+    pickWho(false);
+  }
+}
 function fsErr(err){
   if(err&&err.code==='permission-denied'){
     if(KEY_DENIED)return;KEY_DENIED=true;FSREADY=false;
@@ -1915,11 +1953,13 @@ function startSync(){
     var d=0;
     (m.members||[]).forEach(function(x){if(DB.members.indexOf(x)<0){DB.members.push(x);d=1}});
     (m.gone||[]).forEach(function(x){if(DB.gone.indexOf(x)<0){DB.gone.push(x);d=1}});
-    (m.claimed||[]).forEach(function(x){if(DB.claimed.indexOf(x)<0){DB.claimed.push(x);d=1}});
+    Object.keys(m.claims||{}).forEach(function(x){if((m.claims[x]||0)>(DB.claims[x]||0)){DB.claims[x]=m.claims[x];d=1}});
+    Object.keys(m.rels||{}).forEach(function(x){if((m.rels[x]||0)>(DB.rels[x]||0)){DB.rels[x]=m.rels[x];d=1}});
+    dropSelfCheck();
     var b4=DB.members.length;DB.members=DB.members.filter(function(x){return DB.gone.indexOf(x)<0});if(DB.members.length!==b4)d=1;
     if((m.rateAt||0)>(DB.rateAt||0)){DB.rate=m.rate;DB.rateAt=m.rateAt;d=1}
     if((m.epoch||0)>0)DB.epoch=Math.max(DB.epoch||0,m.epoch||0);
-    SHADOW.meta=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.claimed.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
+    SHADOW.meta=metaStamp();
     if(d){saveLocal();renderMembers();renderMoney()}schedulePush()},fsErr);
   col('log').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var l=c.doc.data();if(!l||!l.at)return;if((l.ep||0)<(DB.epoch||0))return;SHADOW.log[l.at+'|'+l.by]=1;
     if(!DB.log.some(function(x){return x.at===l.at&&x.by===l.by&&x.action===l.action})){DB.log.push(l);d=1}});
@@ -1931,7 +1971,7 @@ function startSync(){
     idbGet('photos',p.id).then(function(cur){if(!cur)idbPut('photos',p).then(function(){photoCache[p.id]=p;renderWall();renderNotes();renderMoney()})})})},fsErr);
 }
 function doEpochWipe(n){
-  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.gone=[];DB.claimed=[];DB.epoch=n||0;
+  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.gone=[];DB.claims={};DB.rels={};DB.epoch=n||0;
   SHADOW={expenses:{},notes:{},itin:{},meta:'',log:{}};
   photoCache={};localStorage.setItem('nztrip-pushedph','{}');
   idbClear('photos').then(function(){renderWall();renderNotes()});
@@ -1946,9 +1986,9 @@ function syncPush(){
   DB.expenses.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.expenses[r.id]!==st){SHADOW.expenses[r.id]=st;col('expenses').doc(r.id).set(r).catch(function(){})}});
   DB.notes.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.notes[r.id]!==st){SHADOW.notes[r.id]=st;col('notes').doc(r.id).set(r).catch(function(){})}});
   Object.keys(DB.itin).forEach(function(i){var r=DB.itin[i];if((r.ep||0)<(DB.epoch||0))return;if(SHADOW.itin[i]!==r.at){SHADOW.itin[i]=r.at;col('itin').doc(String(i)).set(r).catch(function(){})}});
-  if(me()&&DB.claimed.indexOf(me())<0)DB.claimed.push(me());
-  var ms=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.claimed.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
-  if(SHADOW.meta!==ms){SHADOW.meta=ms;col('meta').doc('config').set({members:DB.members,gone:DB.gone,claimed:DB.claimed,rate:DB.rate,rateAt:DB.rateAt,epoch:DB.epoch||0}).catch(function(){})}
+  if(me()&&!isTaken(me()))DB.claims[me()]=Date.now();
+  var ms=metaStamp();
+  if(SHADOW.meta!==ms){SHADOW.meta=ms;col('meta').doc('config').set({members:DB.members,gone:DB.gone,claims:DB.claims,rels:DB.rels,rate:DB.rate,rateAt:DB.rateAt,epoch:DB.epoch||0}).catch(function(){})}
   DB.log.forEach(function(l){if((l.ep||0)<(DB.epoch||0))return;var k=l.at+'|'+l.by;if(!SHADOW.log[k]){SHADOW.log[k]=1;col('log').doc(String(l.at)+'_'+Math.random().toString(36).slice(2,6)).set(l).catch(function(){})}});
 }
 var pushT=null;function schedulePush(){if(!FSREADY)return;clearTimeout(pushT);pushT=setTimeout(syncPush,400)}
@@ -2002,7 +2042,7 @@ function bootMap(){
 function netUpdate(){document.body.classList.toggle('offline',!navigator.onLine);$('#netlabel').textContent=navigator.onLine?'連線中':'離線模式'}
 window.addEventListener('online',netUpdate);window.addEventListener('offline',netUpdate);
 
-function renderAll(){document.body.classList.toggle('guest',isGuest());renderItin();renderMoney();renderNotes();renderWall();renderMembers();renderLog();$('#whoName').textContent=isGuest()?'👀 訪客':(me()||'選擇成員');var ds=$('#dangerSec');if(ds)ds.style.display=(!isGuest()&&me()==='Allen')?'block':'none'}
+function renderAll(){document.body.classList.toggle('guest',isGuest());renderItin();renderMoney();renderNotes();renderWall();renderMembers();renderLog();$('#whoName').textContent=isGuest()?'👀 訪客':(me()||'選擇成員');var ds=$('#dangerSec');if(ds)ds.style.display=(!isGuest()&&me()==='Allen')?'block':'none';if(window.renderUnlock)renderUnlock()}
 load();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist()}
 idbOpen().then(function(){renderAll();netUpdate();initFirebase();setTimeout(bootMap,120);if(!getKey())askKey();else if(!me())pickWho(false)})
