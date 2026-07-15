@@ -825,6 +825,7 @@ textarea{min-height:84px;resize:vertical}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chips button{border:1.5px solid var(--line);background:var(--snow);border-radius:999px;padding:6px 13px;font-size:13.5px;color:var(--ink-soft)}
 .chips button.on{background:var(--glacier-deep);border-color:var(--glacier-deep);color:#fff;font-weight:700}
+.chips button[disabled]{opacity:.38;pointer-events:none;text-decoration:line-through}
 
 /* modal */
 .modal{display:none;position:fixed;inset:0;background:rgba(22,36,58,.55);z-index:1000;align-items:flex-end;justify-content:center}
@@ -1113,8 +1114,8 @@ function money(n){return n.toLocaleString('en-NZ',{maximumFractionDigits:1})}
 
 /* ═══════════ 資料層：localStorage + IndexedDB ═══════════ */
 var DB=null, LSKEY='nztrip-v1';
-function seed(){return {v:1,epoch:0,members:['Grace','Annie','Peggy','Allen'],gone:[],rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
-function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen');
+function seed(){return {v:1,epoch:0,members:['Grace','Annie','Peggy','Allen'],gone:[],claimed:[],rate:18.5,rateAt:0,expenses:[],notes:[],itin:{},log:[]}}
+function load(){try{DB=JSON.parse(localStorage.getItem(LSKEY))||seed()}catch(e){DB=seed()}if(!DB.gone)DB.gone=[];if(!DB.claimed)DB.claimed=[];if(!DB.epoch)DB.epoch=0;if(DB.members.indexOf('Allen')<0&&DB.gone.indexOf('Allen')<0)DB.members.push('Allen');
   if(DB.members.indexOf('任俞')>-1){
     DB.members=DB.members.filter(function(x){return x!=='任俞'});
     if(DB.members.indexOf('Grace')<0)DB.members.push('Grace');
@@ -1325,7 +1326,7 @@ function openSpotSheet(di,ii){
   var tot=exps.reduce(function(s,e){return s+nzd(e)},0);
   var eh=exps.length?'<label class="f">💰 這裡的花費（共 NZ$'+money(tot)+'）</label>'+exps.map(function(e){return '<div class="sp-row" data-ex="'+e.id+'"><span>'+esc(e.title)+' <small class="muted">'+esc(e.payer)+' 代墊</small></span><b class="mono">'+(e.cur==='TWD'?'NT$':'NZ$')+money(e.amt)+'</b></div>'}).join(''):'';
   var nh=nts.length?'<label class="f">📔 這裡的記事</label>'+nts.map(function(n){return '<div class="sp-row" data-nt="'+n.id+'"><span>'+esc((n.text||'📷 照片').slice(0,24))+'</span><small class="muted">'+esc(n.by)+'</small></div>'}).join(''):'';
-  openModal('<h3>📍 '+esc(name)+'</h3><p class="muted">'+esc(d.date+'・'+it.t)+'</p>'+(it.ll?'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrl(it.ll)+'" target="_blank" rel="noopener">🧭 Google 導航到這裡</a>':'')+eh+nh
+  openModal('<h3>📍 '+esc(name)+'</h3><p class="muted">'+esc(d.date+'・'+it.t)+'</p>'+(it.ll?'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrlName(name)+'" target="_blank" rel="noopener">🧭 導航到「'+esc(name)+'」</a><a href="'+navUrl(it.ll)+'" target="_blank" rel="noopener" class="muted" style="display:block;text-align:center;font-size:12px;margin-top:4px">找不到地點？改用座標導航</a>':'')+eh+nh
    +(isGuest()?'<p class="muted" style="margin-top:10px">👀 訪客模式僅供查看，輸入通關暗號後可在此記帳與寫記事。</p>'
      :'<button class="btn blk" id="sp-exp">💰 在這裡記一筆</button>'
       +'<button class="btn ghost blk" id="sp-note">📔 在這裡寫記事／傳照片</button>'));
@@ -1576,6 +1577,7 @@ function mergeIn(inc){
   var added=0;
   (inc.db.members||[]).forEach(function(m){if(DB.members.indexOf(m)<0){DB.members.push(m);added++}});
   (inc.db.gone||[]).forEach(function(m){if(DB.gone.indexOf(m)<0){DB.gone.push(m);added++}});
+  (inc.db.claimed||[]).forEach(function(m){if(DB.claimed.indexOf(m)<0){DB.claimed.push(m);added++}});
   DB.members=DB.members.filter(function(x){return DB.gone.indexOf(x)<0});
   ['expenses','notes'].forEach(function(k){(inc.db[k]||[]).forEach(function(r){
     r.ep=Math.max(r.ep||0,DB.epoch||0);
@@ -1650,18 +1652,27 @@ function renderLog(){
 /* ═══════════ 身分 ═══════════ */
 function pickWho(force){
   if(me()&&!force){$('#whoName').textContent=me();return}
-  openModal('<h3>你是誰？</h3><p class="muted">記帳與編輯都會掛在這個名字下。</p>'
-   +'<div class="chips" id="who-chips">'+DB.members.map(function(m){return '<button data-m="'+esc(m)+'">'+esc(m)+'</button>'}).join('')+'</div>'
+  openModal('<h3>你是誰？</h3><p class="muted">⚠️ 確認後將無法切換帳號；已被別人選用的名字無法再選。</p>'
+   +'<div class="chips" id="who-chips">'+DB.members.map(function(m){
+      var taken=DB.claimed.indexOf(m)>-1&&m!==me();
+      return '<button data-m="'+esc(m)+'"'+(taken?' disabled':'')+'>'+esc(m)+(taken?'（已選用）':'')+'</button>'}).join('')+'</div>'
    +'<label class="f">或輸入新名字</label><div style="display:flex;gap:8px"><input type="text" id="who-new"><button class="btn" id="who-ok" style="flex:0 0 auto">確定</button></div>');
-  $$('#who-chips button').forEach(function(b){b.onclick=function(){setWho(b.dataset.m)}});
-  $('#who-ok').onclick=function(){var v=$('#who-new').value.trim();if(v)setWho(v)};
+  function tryClaim(n){
+    if(DB.claimed.indexOf(n)>-1&&n!==me())return alert('「'+n+'」已被其他成員選用。');
+    if(!confirm('確認以「'+n+'」的身分使用嗎？\n確認後這支手機將無法切換帳號。'))return;
+    setWho(n);
+  }
+  $$('#who-chips button').forEach(function(b){if(!b.disabled)b.onclick=function(){tryClaim(b.dataset.m)}});
+  $('#who-ok').onclick=function(){var v=$('#who-new').value.trim();if(v)tryClaim(v)};
 }
 function setWho(n){
   localStorage.setItem('nztrip-me',n);
-  if(DB.members.indexOf(n)<0){DB.members.push(n);DB.gone=DB.gone.filter(function(x){return x!==n});save();renderMembers()}
+  if(DB.members.indexOf(n)<0){DB.members.push(n);DB.gone=DB.gone.filter(function(x){return x!==n})}
+  if(DB.claimed.indexOf(n)<0)DB.claimed.push(n);
+  save();renderMembers();
   $('#whoName').textContent=n;var ds=$('#dangerSec');if(ds)ds.style.display=n==='Allen'?'block':'none';closeModal();if(window.getKey&&!getKey())setTimeout(askKey,200);
 }
-$('#whoBtn').onclick=function(){if(isGuest())askKey();else pickWho(true)};
+$('#whoBtn').onclick=function(){if(isGuest())askKey();else if(me())alert('身分已確認為「'+me()+'」，無法切換。\n（選錯帳號請聯絡 Allen 協助處理）');else pickWho(true)};
 
 /* ═══════════ 地圖：由行程資料動態產生（與編輯連動）═══════════ */
 var MAP=null,mapLayer=null;
@@ -1677,8 +1688,9 @@ function makeTiles(){
   return new Cached('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:15,attribution:'© OpenStreetMap'});
 }
 function navUrl(ll){return 'https://www.google.com/maps/dir/?api=1&destination='+ll[0]+','+ll[1]}
+function navUrlName(name){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(name)}
 function dayPts(i){var d=dayData(i);return d.items.map(function(it){return it.ll?{ll:it.ll,name:shortLabel(it.x),t:it.t,x:it.x,pt:it.pt||'poi'}:null}).filter(Boolean)}
-function popupHtml(p){return '<b>'+esc(p.name)+'</b><br><span style="color:#5B6B7A;font-size:12px">'+esc((p.t?p.t+'｜':'')+p.x.slice(0,42))+'</span><br><a href="'+navUrl(p.ll)+'" target="_blank" rel="noopener" style="font-weight:700">🧭 Google 導航</a>'}
+function popupHtml(p){return '<b>'+esc(p.name)+'</b><br><span style="color:#5B6B7A;font-size:12px">'+esc((p.t?p.t+'｜':'')+p.x.slice(0,42))+'</span><br><a href="'+navUrlName(p.name)+'" target="_blank" rel="noopener" style="font-weight:700">🧭 導航到「'+esc(p.name)+'」</a><br><a href="'+navUrl(p.ll)+'" target="_blank" rel="noopener" style="font-size:11px;color:#5B6B7A">找不到地點？改用座標導航</a>'}
 function renderMap(){
   if(!MAP)return;
   if(mapLayer)MAP.removeLayer(mapLayer);
@@ -1823,7 +1835,7 @@ if(rb)rb.onclick=function(){
   if(!confirm('⚠️ 全團重置會刪除「雲端＋所有成員手機」的記帳、記事、照片與行程修改，回到預設行程。\n通常用於：測試玩夠了，正式出發前清空。\n\n確定繼續？'))return;
   if(!confirm('最後確認：此動作無法復原（可先到下方匯出一份備份留念）。真的要清空全團資料？'))return;
   var ep=Date.now();setSyncState('🧹 重置中…');
-  col('meta').doc('config').set({members:DB.members,gone:[],rate:DB.rate,rateAt:Date.now(),epoch:ep})
+  col('meta').doc('config').set({members:DB.members,gone:[],claimed:[],rate:DB.rate,rateAt:Date.now(),epoch:ep})
   .then(function(){
     var names=['expenses','notes','itin','log','photos'];
     return Promise.all(names.map(function(n){return col(n).get().then(function(s){return Promise.all(s.docs.map(function(dd){return dd.ref.delete()}))})}))
@@ -1835,7 +1847,7 @@ if(rb)rb.onclick=function(){
 
 /* ═══════════ Firebase 即時同步 ═══════════ */
 var FBCFG={apiKey:"AIzaSyAZ_giCWm-ccuif78y2u9JfgYAwcamoqV8",authDomain:"nz-trip-2026-85d44.firebaseapp.com",projectId:"nz-trip-2026-85d44",storageBucket:"nz-trip-2026-85d44.firebasestorage.app",messagingSenderId:"887709219430",appId:"1:887709219430:web:d693c9075a21510c648ba7"};
-var FSDB=null,FSREADY=false,TRIPKEY='',META_SEEN=false;
+var FSDB=null,FSREADY=false,TRIPKEY='',META_SEEN=false,KEY_DENIED=false;
 var SHADOW={expenses:{},notes:{},itin:{},meta:'',log:{}};
 function getKey(){return localStorage.getItem('nztrip-key')||''}
 function col(n){return FSDB.collection('trips').doc(TRIPKEY).collection(n)}
@@ -1866,7 +1878,14 @@ function askKey(){
   $('#key-skip').onclick=function(){closeModal();renderAll()};
 }
 function fsErr(err){
-  if(err&&err.code==='permission-denied'){FSREADY=false;setSyncState('❌ 暗號不正確——到「更多」重新輸入');}
+  if(err&&err.code==='permission-denied'){
+    if(KEY_DENIED)return;KEY_DENIED=true;FSREADY=false;
+    localStorage.removeItem('nztrip-key');
+    setSyncState('❌ 暗號錯誤（目前為訪客模式）');
+    renderAll();
+    alert('❌ 通關暗號錯誤，無法連上團隊資料。\n請重新輸入正確暗號；關閉輸入視窗將以訪客身分繼續。');
+    askKey();
+  }
   else setSyncState('⚠️ 同步暫時中斷，會自動重試');
 }
 function mergeRec(k,r){var cur=DB[k].find(function(x){return x.id===r.id});
@@ -1883,10 +1902,11 @@ function startSync(){
     var d=0;
     (m.members||[]).forEach(function(x){if(DB.members.indexOf(x)<0){DB.members.push(x);d=1}});
     (m.gone||[]).forEach(function(x){if(DB.gone.indexOf(x)<0){DB.gone.push(x);d=1}});
+    (m.claimed||[]).forEach(function(x){if(DB.claimed.indexOf(x)<0){DB.claimed.push(x);d=1}});
     var b4=DB.members.length;DB.members=DB.members.filter(function(x){return DB.gone.indexOf(x)<0});if(DB.members.length!==b4)d=1;
     if((m.rateAt||0)>(DB.rateAt||0)){DB.rate=m.rate;DB.rateAt=m.rateAt;d=1}
     if((m.epoch||0)>0)DB.epoch=Math.max(DB.epoch||0,m.epoch||0);
-    SHADOW.meta=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
+    SHADOW.meta=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.claimed.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
     if(d){saveLocal();renderMembers();renderMoney()}schedulePush()},fsErr);
   col('log').onSnapshot(function(s){var d=0;s.docChanges().forEach(function(c){if(c.type==='removed')return;var l=c.doc.data();if(!l||!l.at)return;if((l.ep||0)<(DB.epoch||0))return;SHADOW.log[l.at+'|'+l.by]=1;
     if(!DB.log.some(function(x){return x.at===l.at&&x.by===l.by&&x.action===l.action})){DB.log.push(l);d=1}});
@@ -1898,7 +1918,7 @@ function startSync(){
     idbGet('photos',p.id).then(function(cur){if(!cur)idbPut('photos',p).then(function(){photoCache[p.id]=p;renderWall();renderNotes();renderMoney()})})})},fsErr);
 }
 function doEpochWipe(n){
-  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.gone=[];DB.epoch=n||0;
+  DB.expenses=[];DB.notes=[];DB.itin={};DB.log=[];DB.gone=[];DB.claimed=[];DB.epoch=n||0;
   SHADOW={expenses:{},notes:{},itin:{},meta:'',log:{}};
   photoCache={};localStorage.setItem('nztrip-pushedph','{}');
   idbClear('photos').then(function(){renderWall();renderNotes()});
@@ -1913,8 +1933,9 @@ function syncPush(){
   DB.expenses.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.expenses[r.id]!==st){SHADOW.expenses[r.id]=st;col('expenses').doc(r.id).set(r).catch(function(){})}});
   DB.notes.forEach(function(r){if((r.ep||0)<(DB.epoch||0))return;var st=r.editedAt||r.at;if(SHADOW.notes[r.id]!==st){SHADOW.notes[r.id]=st;col('notes').doc(r.id).set(r).catch(function(){})}});
   Object.keys(DB.itin).forEach(function(i){var r=DB.itin[i];if((r.ep||0)<(DB.epoch||0))return;if(SHADOW.itin[i]!==r.at){SHADOW.itin[i]=r.at;col('itin').doc(String(i)).set(r).catch(function(){})}});
-  var ms=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
-  if(SHADOW.meta!==ms){SHADOW.meta=ms;col('meta').doc('config').set({members:DB.members,gone:DB.gone,rate:DB.rate,rateAt:DB.rateAt,epoch:DB.epoch||0}).catch(function(){})}
+  if(me()&&DB.claimed.indexOf(me())<0)DB.claimed.push(me());
+  var ms=JSON.stringify([DB.members.slice().sort(),DB.gone.slice().sort(),DB.claimed.slice().sort(),DB.rate,DB.rateAt,DB.epoch||0]);
+  if(SHADOW.meta!==ms){SHADOW.meta=ms;col('meta').doc('config').set({members:DB.members,gone:DB.gone,claimed:DB.claimed,rate:DB.rate,rateAt:DB.rateAt,epoch:DB.epoch||0}).catch(function(){})}
   DB.log.forEach(function(l){if((l.ep||0)<(DB.epoch||0))return;var k=l.at+'|'+l.by;if(!SHADOW.log[k]){SHADOW.log[k]=1;col('log').doc(String(l.at)+'_'+Math.random().toString(36).slice(2,6)).set(l).catch(function(){})}});
 }
 var pushT=null;function schedulePush(){if(!FSREADY)return;clearTimeout(pushT);pushT=setTimeout(syncPush,400)}
