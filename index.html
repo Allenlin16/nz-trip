@@ -1236,21 +1236,28 @@ var ITIN=[
  tips:[{w:1,x:'⏰ 紐西蘭夏令時間 9/27 凌晨 2:00 開始，時鐘撥快 1 小時！確認班機時間認知正確，別誤機。'}]}
 ];
 var DAYMETA=[{c:'#16243A'},{c:'#2A7E92'},{c:'#C79A3F'},{c:'#3E8E5A'},{c:'#B4552D'},{c:'#6E5AA8'},{c:'#3EA8BE'},{c:'#5B6B7A'}];
-var DEFLL={'0:0':[[-43.4876,172.5374],'poi'],'0:2':[[-44.0890,170.6532],'stay'],'0:3':[[-44.0043,170.4770],'poi'],'0:4':[[-44.0034,170.4825],'big'],
-'1:0':[[-44.0034,170.4825],'poi'],'1:1':[[-43.9948,170.4609],'poi'],'1:2':[[-44.1899,170.1399],'poi'],'1:3':[[-44.2830,170.1150],'poi'],'1:4':[[-44.2688,170.0734],'stay'],
-'2:0':[[-44.2688,170.0734],'stay'],'2:1':[[-43.7664,170.1327],'big'],'2:2':[[-43.7181,170.0940],'poi'],'2:4':[[-43.7355,170.0946],'poi'],'2:6':[[-44.2688,170.0734],'stay'],
-'3:0':[[-44.4890,169.8670],'poi'],'3:1':[[-44.4930,169.9660],'poi'],'3:2':[[-44.5900,169.6410],'poi'],'3:3':[[-44.6749,169.1600],'stay'],'3:4':[[-44.6983,169.1176],'poi'],
-'4:0':[[-44.7253,169.2476],'big'],'4:1':[[-44.6967,169.1616],'poi'],'4:2':[[-44.6910,169.1050],'poi'],
-'5:1':[[-44.8815,169.0036],'poi'],'5:2':[[-45.0380,168.6985],'poi'],'5:3':[[-44.9375,168.8280],'poi'],'5:4':[[-45.0324,168.6649],'stay'],'5:5':[[-45.0285,168.6562],'poi'],'5:6':[[-45.0317,168.6595],'poi'],
-'6:0':[[-44.8516,168.3810],'poi'],'6:1':[[-45.0317,168.6595],'poi'],'6:2':[[-45.0324,168.6649],'stay'],
-'7:0':[[-45.0324,168.6649],'stay'],'7:1':[[-45.0317,168.6595],'poi'],'7:2':[[-45.0198,168.7453],'poi']};
+var DEFLL={
+'0:0':[[-43.4876,172.5374],'poi','Christchurch Airport'],'0:2':[[-44.0890,170.6532],'stay','Burkes Pass'],'0:3':[[-44.0043,170.4770],'poi','Kohan Restaurant Lake Tekapo'],'0:4':[[-44.0034,170.4825],'big','Church of the Good Shepherd'],
+'1:0':[[-44.0034,170.4825],'poi','Church of the Good Shepherd'],'1:1':[[-43.9948,170.4609],'poi','Tekapo Springs'],'1:2':[[-44.1899,170.1399],'poi','Lake Pukaki Lookout'],'1:3':[[-44.2830,170.1150],'poi','High Country Salmon'],'1:4':[[-44.2688,170.0734],'stay','7 The Drive Twizel'],
+'2:0':[[-44.2688,170.0734],'stay','7 The Drive Twizel'],'2:1':[[-43.7664,170.1327],'big','Mount Cook Airport'],'2:2':[[-43.7181,170.0940],'poi','White Horse Hill Campground'],'2:4':[[-43.7355,170.0946],'poi','The Old Mountaineers Cafe'],'2:6':[[-44.2688,170.0734],'stay','7 The Drive Twizel'],
+'3:0':[[-44.4890,169.8670],'poi','Clay Cliffs Omarama'],'3:1':[[-44.4930,169.9660],'poi','Omarama'],'3:2':[[-44.5900,169.6410],'poi','Lindis Pass Summit Lookout'],'3:3':[[-44.6749,169.1600],'stay','16/7 Northlake Drive Wanaka'],'3:4':[[-44.6983,169.1176],'poi','That Wanaka Tree'],
+'4:0':[[-44.7253,169.2476],'big','Skydive Wanaka'],'4:1':[[-44.6967,169.1616],'poi','Puzzling World Wanaka'],'4:2':[[-44.6910,169.1050],'poi','Rippon Vineyard'],
+'5:1':[[-44.8815,169.0036],'poi','Cardrona Hotel'],'5:2':[[-45.0380,168.6985],'poi','Deer Park Heights'],'5:3':[[-44.9375,168.8280],'poi','Arrowtown'],'5:4':[[-45.0324,168.6649],'stay','Heartland Hotel Queenstown'],'5:5':[[-45.0285,168.6562],'poi','Skyline Queenstown'],'5:6':[[-45.0317,168.6595],'poi','Fergburger'],
+'6:0':[[-44.8516,168.3810],'poi','Glenorchy Wharf'],'6:1':[[-45.0317,168.6595],'poi','Queenstown'],'6:2':[[-45.0324,168.6649],'stay','Heartland Hotel Queenstown'],
+'7:0':[[-45.0324,168.6649],'stay','Heartland Hotel Queenstown'],'7:1':[[-45.0317,168.6595],'poi','Queenstown'],'7:2':[[-45.0198,168.7453],'poi','Queenstown Airport']};
 ITIN.forEach(function(d,i){var mm=DAYMETA[i];d.c=mm.c;if(mm.loop)d.loop=1;
-  d.items.forEach(function(it,k){var m=DEFLL[i+':'+k];if(m){it.ll=m[0];it.pt=m[1]}})});
+  d.items.forEach(function(it,k){var m=DEFLL[i+':'+k];if(m){it.ll=m[0];it.pt=m[1];if(m[2])it.nav=m[2]}})});
 function hydrateOverrides(){Object.keys(DB.itin||{}).forEach(function(i){var od=DB.itin[i]&&DB.itin[i].d;if(!od)return;var def=ITIN[i];if(!def)return;
   od.c=def.c;if(def.loop&&od.loop==null)od.loop=1;
-  (od.items||[]).forEach(function(it){if(it.ll)return;
-    var m=def.items.find(function(x){return shortLabel(x.x)===shortLabel(it.x)});
-    if(m&&m.ll){it.ll=m.ll;it.pt=m.pt}})})}
+  (od.items||[]).forEach(function(it){
+    if(!it.ll){
+      var m=def.items.find(function(x){return shortLabel(x.x)===shortLabel(it.x)});
+      if(m&&m.ll){it.ll=m.ll;it.pt=m.pt;if(m.nav)it.nav=m.nav}
+    }
+    if(it.ll&&!it.nav){
+      var m2=def.items.find(function(x){return x.ll&&llDist(x.ll,it.ll)<0.05});
+      if(m2&&m2.nav)it.nav=m2.nav;
+    }})})}
 function dayData(i){return (DB.itin[i]&&DB.itin[i].d)||ITIN[i]}
 
 /* ═══════════ 行程渲染與編輯 ═══════════ */
@@ -1326,7 +1333,7 @@ function openSpotSheet(di,ii){
   var tot=exps.reduce(function(s,e){return s+nzd(e)},0);
   var eh=exps.length?'<label class="f">💰 這裡的花費（共 NZ$'+money(tot)+'）</label>'+exps.map(function(e){return '<div class="sp-row" data-ex="'+e.id+'"><span>'+esc(e.title)+' <small class="muted">'+esc(e.payer)+' 代墊</small></span><b class="mono">'+(e.cur==='TWD'?'NT$':'NZ$')+money(e.amt)+'</b></div>'}).join(''):'';
   var nh=nts.length?'<label class="f">📔 這裡的記事</label>'+nts.map(function(n){return '<div class="sp-row" data-nt="'+n.id+'"><span>'+esc((n.text||'📷 照片').slice(0,24))+'</span><small class="muted">'+esc(n.by)+'</small></div>'}).join(''):'';
-  openModal('<h3>📍 '+esc(name)+'</h3><p class="muted">'+esc(d.date+'・'+it.t)+'</p>'+(it.ll?'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrlName(name)+'" target="_blank" rel="noopener">🧭 導航到「'+esc(name)+'」</a><a href="'+navUrl(it.ll)+'" target="_blank" rel="noopener" class="muted" style="display:block;text-align:center;font-size:12px;margin-top:4px">找不到地點？改用座標導航</a>':'')+eh+nh
+  openModal('<h3>📍 '+esc(name)+'</h3><p class="muted">'+esc(d.date+'・'+it.t)+'</p>'+(it.ll?(it.nav?'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrlName(it.nav)+'" target="_blank" rel="noopener">🧭 導航：'+esc(it.nav)+'</a><a href="'+navUrl(it.ll)+'" target="_blank" rel="noopener" class="muted" style="display:block;text-align:center;font-size:12px;margin-top:4px">改用座標導航</a>':'<a class="btn ghost blk" style="text-decoration:none" href="'+navUrl(it.ll)+'" target="_blank" rel="noopener">🧭 座標導航</a>'):'')+eh+nh
    +(isGuest()?'<p class="muted" style="margin-top:10px">👀 訪客模式僅供查看，輸入通關暗號後可在此記帳與寫記事。</p>'
      :'<button class="btn blk" id="sp-exp">💰 在這裡記一筆</button>'
       +'<button class="btn ghost blk" id="sp-note">📔 在這裡寫記事／傳照片</button>'));
@@ -1370,7 +1377,7 @@ function openDayEditor(i){
   bindRm();bindLoc();
   $('#ed-save').onclick=function(){
     d.title=$('#ed-title').value.trim();d.drive=$('#ed-drive').value.trim();d.stay=$('#ed-stay').value.trim();
-    var rows=$$('#ed-items .ed-item').map(function(r){return {orig:r.dataset.orig,ll:parseLL(r.dataset.ll),pt:r.dataset.pt||'',t:r.querySelector('.ed-t').value.trim(),x:r.querySelector('textarea').value.trim(),s:r.querySelector('.ed-s input').checked?1:0}}).filter(function(it){return it.x});
+    var rows=$$('#ed-items .ed-item').map(function(r){return {orig:r.dataset.orig,ll:parseLL(r.dataset.ll),pt:r.dataset.pt||'',nav:r.dataset.nav||'',t:r.querySelector('.ed-t').value.trim(),x:r.querySelector('textarea').value.trim(),s:r.querySelector('.ed-s input').checked?1:0}}).filter(function(it){return it.x});
     // 找出被刪除且已綁紀錄的項目 → 防呆確認
     var present={};rows.forEach(function(it){if(it.orig!=='')present[it.orig]=1});
     var lost=[];
@@ -1386,14 +1393,14 @@ function openDayEditor(i){
       if(ok===nk)return;var nn=shortLabel(it.x);
       ['expenses','notes'].forEach(function(kk){DB[kk].forEach(function(r){
         if(!r.del&&r.spotKey===ok){r.spotKey=nk;r.spotName=nn;r.editedBy=me()||'？';r.editedAt=Date.now();moved++}})})});
-    d.items=rows.map(function(it){var o={t:it.t,x:it.x,s:it.s};if(it.ll)o.ll=it.ll;if(it.pt)o.pt=it.pt;return o});
+    d.items=rows.map(function(it){var o={t:it.t,x:it.x,s:it.s};if(it.ll)o.ll=it.ll;if(it.pt)o.pt=it.pt;if(it.nav)o.nav=it.nav;return o});
     d.tips=$('#ed-tips').value.split('\n').map(function(l){return l.trim()}).filter(Boolean).map(function(l){return l[0]==='!'?{w:1,x:l.slice(1)}:{w:0,x:l}});
     DB.itin[i]={d:d,by:me()||'？',at:Date.now(),ep:DB.epoch||0};
     logAct('修改了 '+d.date+' 行程「'+d.title+'」'+(moved?'（自動遷移 '+moved+' 筆綁定紀錄）':''));
     save();renderItin();renderMoney();renderNotes();renderLog();closeModal();
   };
 }
-function edRow(it,ec,nc,orig){return '<div class="ed-wrap"><div class="ed-item" data-orig="'+(orig==null?'':orig)+'" data-ll="'+(it.ll?it.ll.join(','):'')+'" data-pt="'+(it.pt||'')+'"><input class="ed-t" type="text" value="'+esc(it.t)+'" placeholder="時間">'
+function edRow(it,ec,nc,orig){return '<div class="ed-wrap"><div class="ed-item" data-orig="'+(orig==null?'':orig)+'" data-ll="'+(it.ll?it.ll.join(','):'')+'" data-pt="'+(it.pt||'')+'" data-nav="'+esc(it.nav||'')+'"><input class="ed-t" type="text" value="'+esc(it.t)+'" placeholder="時間">'
  +'<textarea>'+esc(it.x)+'</textarea>'
  +'<label class="ed-s">★<br><input type="checkbox"'+(it.s?' checked':'')+'></label>'
  +'<button class="loc'+(it.ll?' has':'')+'" type="button">📍</button>'
@@ -1689,8 +1696,13 @@ function makeTiles(){
 }
 function navUrl(ll){return 'https://www.google.com/maps/dir/?api=1&destination='+ll[0]+','+ll[1]}
 function navUrlName(name){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(name)}
-function dayPts(i){var d=dayData(i);return d.items.map(function(it){return it.ll?{ll:it.ll,name:shortLabel(it.x),t:it.t,x:it.x,pt:it.pt||'poi'}:null}).filter(Boolean)}
-function popupHtml(p){return '<b>'+esc(p.name)+'</b><br><span style="color:#5B6B7A;font-size:12px">'+esc((p.t?p.t+'｜':'')+p.x.slice(0,42))+'</span><br><a href="'+navUrlName(p.name)+'" target="_blank" rel="noopener" style="font-weight:700">🧭 導航到「'+esc(p.name)+'」</a><br><a href="'+navUrl(p.ll)+'" target="_blank" rel="noopener" style="font-size:11px;color:#5B6B7A">找不到地點？改用座標導航</a>'}
+function dayPts(i){var d=dayData(i);return d.items.map(function(it){return it.ll?{ll:it.ll,name:shortLabel(it.x),nav:it.nav||'',t:it.t,x:it.x,pt:it.pt||'poi'}:null}).filter(Boolean)}
+function popupHtml(p){
+  var main=p.nav?'<a href="'+navUrlName(p.nav)+'" target="_blank" rel="noopener" style="font-weight:700">🧭 導航：'+esc(p.nav)+'</a>'
+              :'<a href="'+navUrl(p.ll)+'" target="_blank" rel="noopener" style="font-weight:700">🧭 座標導航</a>';
+  var sub=p.nav?'<br><a href="'+navUrl(p.ll)+'" target="_blank" rel="noopener" style="font-size:11px;color:#5B6B7A">改用座標導航</a>':'';
+  return '<b>'+esc(p.name)+'</b><br><span style="color:#5B6B7A;font-size:12px">'+esc((p.t?p.t+'｜':'')+p.x.slice(0,42))+'</span><br>'+main+sub;
+}
 function renderMap(){
   if(!MAP)return;
   if(mapLayer)MAP.removeLayer(mapLayer);
@@ -1820,13 +1832,14 @@ $('#loc-ok').onclick=function(){
   var ll=PICKLL||parseLL($('#loc-paste').value);
   if(!ll)return alert('請先搜尋地點、點地圖放圖釘，或貼上有效座標');
   PICKROW.dataset.ll=ll[0]+','+ll[1];
+  if(PICKNAME)PICKROW.dataset.nav=PICKNAME;
   PICKROW.querySelector('.loc').classList.add('has');
   if(PICKNAME&&$('#loc-apply').checked){
     var ta=PICKROW.querySelector('textarea');ta.value=PICKNAME;
   }
   closeLoc();
 };
-$('#loc-clear').onclick=function(){if(PICKROW){PICKROW.dataset.ll='';PICKROW.querySelector('.loc').classList.remove('has')}closeLoc()};
+$('#loc-clear').onclick=function(){if(PICKROW){PICKROW.dataset.ll='';PICKROW.dataset.nav='';PICKROW.querySelector('.loc').classList.remove('has')}closeLoc()};
 $('#loc-cancel').onclick=closeLoc;
 var rb=$('#resetAllBtn');
 if(rb)rb.onclick=function(){
