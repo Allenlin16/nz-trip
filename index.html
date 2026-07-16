@@ -835,11 +835,13 @@ textarea{min-height:84px;resize:vertical}
 .sheet h3{font-size:17px;margin-bottom:4px}
 .sheet .x{position:sticky;top:0;float:right;background:#F0F7F9;border:1px solid var(--line);border-radius:50%;width:32px;height:32px;font-size:15px;color:var(--ink-soft)}
 .ed-item{display:flex;gap:6px;align-items:flex-start;margin-bottom:8px}
-.ed-item input.ed-t{width:96px;flex:0 0 auto;font-family:ui-monospace,monospace;font-size:13px;padding:7px 4px}
+.ed-item input.ed-t{width:78px;height:34px;flex:0 0 auto;font-family:ui-monospace,monospace;font-size:12.5px;padding:4px 2px;-webkit-appearance:none;appearance:none;text-align:center}
 .grip{flex:0 0 auto;width:26px;height:30px;margin-top:4px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#9DB4BF;cursor:grab;border-radius:8px;background:#F7FBFC;border:1px solid var(--line);user-select:none;-webkit-user-select:none;touch-action:none}
 .grip:active{cursor:grabbing;background:#E4F1F4;color:var(--glacier-deep)}
 .drag-ghost{opacity:.35;background:#E4F1F4;border-radius:12px}
-.ed-item textarea{min-height:52px;font-size:13.5px;flex:1}
+.ed-x{flex:1;min-height:34px;max-height:56px;padding:7px 10px;border:1.5px solid var(--line);border-radius:10px;background:#FCFEFE;font-size:13px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;cursor:pointer;word-break:break-word}
+.ed-x:empty::before{content:'點此輸入行程內容…';color:#9DB4BF}
+#txt-big{min-height:38vh;font-size:16px;line-height:1.7}
 .ed-item .ed-s{flex:0 0 auto;font-size:11px;color:var(--ink-soft);text-align:center;padding-top:6px}
 .ed-item .rm{flex:0 0 auto;border:0;background:#FBF2EC;color:var(--alert);border-radius:8px;width:30px;height:30px;margin-top:4px}
 .ed-cnt{font-size:11px;color:#8A6516;font-weight:700;margin:-3px 0 8px 78px}
@@ -1053,6 +1055,16 @@ textarea{min-height:84px;resize:vertical}
 <!-- 通用彈窗 -->
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <div class="viewer" id="viewer"><img id="viewerImg" alt=""><div class="cap" id="viewerCap"></div><div style="display:flex;gap:10px"><button class="btn warn" id="viewerDel">🗑 刪除照片</button><button class="btn ghost" onclick="document.getElementById('viewer').classList.remove('on')">關閉</button></div></div>
+<div class="viewer" id="txtOv" style="background:rgba(22,36,58,.92)">
+  <div style="width:94vw;max-width:600px;background:var(--snow);border-radius:14px;padding:14px">
+    <h3 style="font-size:16px;margin-bottom:8px">✏️ 編輯行程內容</h3>
+    <textarea id="txt-big" placeholder="輸入這個行程點的完整說明…"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" id="txt-ok" style="flex:1">確定</button>
+      <button class="btn ghost" id="txt-cancel">取消</button>
+    </div>
+  </div>
+</div>
 <div class="viewer" id="locOv" style="background:rgba(22,36,58,.92)">
   <div style="width:94vw;max-width:600px;background:var(--snow);border-radius:14px;padding:14px;max-height:92vh;overflow-y:auto">
     <h3 style="font-size:16px;margin-bottom:2px">📍 設定這個行程點的位置</h3>
@@ -1387,11 +1399,12 @@ function openDayEditor(i){
     var od=JSON.parse(JSON.stringify(ITIN[i]));
     DB.itin[i]={d:od,by:me()||'？',at:Date.now(),ep:DB.epoch||0};
     logAct('將 '+od.date+' 行程恢復預設');save();renderItin();renderMoney();renderNotes();renderLog();closeModal()};
-  $('#ed-add').onclick=function(){$('#ed-items').insertAdjacentHTML('beforeend',edRow({t:'',x:''},0,0,''));bindRm();bindLoc()};
-  bindRm();bindLoc();initSort();
+  $('#ed-add').onclick=function(){$('#ed-items').insertAdjacentHTML('beforeend',edRow({t:'',x:''},0,0,''));bindRm();bindLoc();bindTxt();bindTime()};
+  bindRm();bindLoc();bindTxt();bindTime();initSort();
   $('#ed-save').onclick=function(){
+    sortRows();
     d.title=$('#ed-title').value.trim();d.drive=$('#ed-drive').value.trim();d.stay=$('#ed-stay').value.trim();
-    var rows=$$('#ed-items .ed-item').map(function(r){return {orig:r.dataset.orig,ll:parseLL(r.dataset.ll),pt:r.dataset.pt||'',nav:r.dataset.nav||'',t:r.querySelector('.ed-t').value.trim(),x:r.querySelector('textarea').value.trim(),s:r.querySelector('.ed-s input').checked?1:0}}).filter(function(it){return it.x});
+    var rows=$$('#ed-items .ed-item').map(function(r){return {orig:r.dataset.orig,ll:parseLL(r.dataset.ll),pt:r.dataset.pt||'',nav:r.dataset.nav||'',t:r.querySelector('.ed-t').value.trim(),x:(r.querySelector('.ed-x').dataset.x||'').trim(),s:r.querySelector('.ed-s input').checked?1:0}}).filter(function(it){return it.x});
     // 找出被刪除且已綁紀錄的項目 → 防呆確認
     var present={};rows.forEach(function(it){if(it.orig!=='')present[it.orig]=1});
     var lost=[];
@@ -1417,7 +1430,7 @@ function openDayEditor(i){
 function edRow(it,ec,nc,orig){return '<div class="ed-wrap"><div class="ed-item" data-orig="'+(orig==null?'':orig)+'" data-ll="'+(it.ll?it.ll.join(','):'')+'" data-pt="'+(it.pt||'')+'" data-nav="'+esc(it.nav||'')+'">'
  +'<span class="grip" title="按住拖拉排序">≡</span>'
  +'<input class="ed-t" type="time" value="'+esc(it.t)+'">'
- +'<textarea>'+esc(it.x)+'</textarea>'
+ +'<div class="ed-x" data-x="'+esc(it.x)+'">'+esc(it.x)+'</div>'
  +'<label class="ed-s">★<br><input type="checkbox"'+(it.s?' checked':'')+'></label>'
  +'<button class="loc'+(it.ll?' has':'')+'" type="button">📍</button>'
  +'<button class="rm">✕</button></div>'
@@ -1425,6 +1438,23 @@ function edRow(it,ec,nc,orig){return '<div class="ed-wrap"><div class="ed-item" 
  +'</div>'}
 function bindRm(){$$('#ed-items .rm').forEach(function(b){b.onclick=function(){var w=b.closest('.ed-wrap');(w||b.parentElement).remove()}})}
 function bindLoc(){$$('#ed-items .loc').forEach(function(b){b.onclick=function(){openLocPicker(b)}})}
+function sortRows(){
+  var box=$('#ed-items');if(!box)return;
+  var wraps=$$('#ed-items .ed-wrap');
+  var last='00:00';
+  var keyed=wraps.map(function(w,i){var t=w.querySelector('.ed-t').value;if(t)last=t;return {w:w,k:(t||last),i:i}});
+  keyed.sort(function(a,b){return a.k===b.k? a.i-b.i : (a.k<b.k?-1:1)});
+  keyed.forEach(function(o){box.appendChild(o.w)});
+}
+function bindTime(){$$('#ed-items .ed-t').forEach(function(t){t.onchange=sortRows})}
+var TXTEL=null;
+function openTxtEditor(el){
+  TXTEL=el;
+  $('#txt-big').value=el.dataset.x||'';
+  $('#txtOv').classList.add('on');
+  setTimeout(function(){$('#txt-big').focus()},60);
+}
+function bindTxt(){$$('#ed-items .ed-x').forEach(function(el){el.onclick=function(){openTxtEditor(el)}})}
 var SORT=null;
 function initSort(){
   if(typeof Sortable==='undefined')return;
@@ -1806,8 +1836,8 @@ function showLocName(){
   $('#loc-name').textContent=PICKNAME?('📌 '+PICKNAME):(PICKLL?'📌 已釘選位置（無名稱）':'');
   var w=$('#loc-applywrap');
   if(PICKNAME){w.style.display='flex';
-    var ta=PICKROW&&PICKROW.querySelector('textarea');
-    $('#loc-apply').checked=!(ta&&ta.value.trim());}
+    var ta=PICKROW&&PICKROW.querySelector('.ed-x');
+    $('#loc-apply').checked=!(ta&&(ta.dataset.x||'').trim());}
   else w.style.display='none';
 }
 function locSetPin(ll,name){
@@ -1865,6 +1895,11 @@ function openLocPicker(btn){
   },80);
 }
 function closeLoc(){$('#locOv').classList.remove('on');if(PICK){try{PICK.remove()}catch(e){}PICK=null}PICKMK=null}
+$('#txt-ok').onclick=function(){
+  if(TXTEL){var v=$('#txt-big').value.trim();TXTEL.dataset.x=v;TXTEL.textContent=v}
+  $('#txtOv').classList.remove('on');TXTEL=null;
+};
+$('#txt-cancel').onclick=function(){$('#txtOv').classList.remove('on');TXTEL=null};
 $('#loc-search').onclick=doLocSearch;
 $('#loc-paste').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();doLocSearch()}});
 $('#loc-ok').onclick=function(){
@@ -1874,7 +1909,7 @@ $('#loc-ok').onclick=function(){
   if(PICKNAME)PICKROW.dataset.nav=PICKNAME;
   PICKROW.querySelector('.loc').classList.add('has');
   if(PICKNAME&&$('#loc-apply').checked){
-    var ta=PICKROW.querySelector('textarea');ta.value=PICKNAME;
+    var ta=PICKROW.querySelector('.ed-x');ta.dataset.x=PICKNAME;ta.textContent=PICKNAME;
   }
   closeLoc();
 };
